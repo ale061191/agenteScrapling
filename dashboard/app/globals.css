@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --cold: #3b82f6;
+  --warm: #f59e0b;
+  --hot: #ef4444;
+  --contacted: #8b5cf6;
+  --accepted: #10b981;
+  --rejected: #6b7280;
+}
+
+body {
+  @apply bg-gray-50 text-gray-900;
+}
+
+/* Smooth sidebar transition */
+.sidebar-link {
+  @apply flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200;
+}
+.sidebar-link:hover {
+  @apply bg-blue-50 text-blue-700;
+}
+.sidebar-link.active {
+  @apply bg-blue-50 text-blue-700 shadow-sm;
+}
+
+/* Section transitions */
+.section-enter {
+  animation: fadeSlideIn 0.35s ease-out;
+}
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Card hover effects */
+.card-hover {
+  @apply transition-all duration-200;
+}
+.card-hover:hover {
+  @apply shadow-md -translate-y-0.5;
+}
+
+/* Drag and drop styles */
+.dragging {
+  @apply opacity-50 scale-95 rotate-1;
+}
+.drop-target {
+  @apply ring-2 ring-blue-400 bg-blue-50/50;
+}
+
+/* Pipeline card pulse animation for new drops */
+@keyframes cardDrop {
+  0% { transform: scale(0.95); opacity: 0.7; }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.card-drop {
+  animation: cardDrop 0.3s ease-out;
+}
+
+/* Smooth scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400;
+}
