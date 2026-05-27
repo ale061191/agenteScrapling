@@ -64,7 +64,7 @@ const SIDEBAR_ITEMS: { key: Section; label: string; icon: string; color: string 
   { key: 'pipeline', label: 'Pipeline de Leads', icon: '|||', color: 'text-amber-500 bg-amber-50' },
   { key: 'leads', label: 'Todos los Leads', icon: '...', color: 'text-violet-500 bg-violet-50' },
   { key: 'search', label: 'Buscar Nuevos Leads', icon: 'srch', color: 'text-emerald-500 bg-emerald-50' },
-  { key: 'campaigns', label: 'Campa\u00f1as de Correo', icon: '\u2709', color: 'text-rose-500 bg-rose-50' },
+  { key: 'campaigns', label: 'Campañas de Correo', icon: '✉', color: 'text-rose-500 bg-rose-50' },
 ]
 
 export default function DashboardPage() {

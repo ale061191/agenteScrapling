@@ -96,7 +96,7 @@ export default function CampaignForm({ leadsCount, onSend, selectedIds, filters 
   return (
     <div className="space-y-6 section-enter">
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <h3 className="font-semibold text-gray-700 mb-1">Nueva Campa\u00f1a de Correo</h3>
+        <h3 className="font-semibold text-gray-700 mb-1">Nueva Campaña de Correo</h3>
         <p className="text-xs text-gray-400 mb-5">Redacta en texto plano, nosotros lo convertimos a HTML</p>
 
         <div className="flex gap-4 mb-5">
@@ -188,7 +188,7 @@ export default function CampaignForm({ leadsCount, onSend, selectedIds, filters 
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/>
               </svg>
-              Enviar Campa\u00f1a
+              Enviar Campaña
             </>
           )}
         </button>
