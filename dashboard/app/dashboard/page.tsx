@@ -327,12 +327,14 @@ export default function DashboardPage() {
                 {activeSection === 'pipeline' && 'Pipeline de Leads'}
                 {activeSection === 'leads' && 'Todos los Leads'}
                 {activeSection === 'search' && 'Buscar Nuevos Leads'}
+                {activeSection === 'campaigns' && 'Campañas de Correo'}
               </h2>
               <p className="text-xs text-gray-400">
                 {activeSection === 'dashboard' && 'Metricas y graficos del sistema'}
                 {activeSection === 'pipeline' && 'Arrastra los leads entre columnas para gestionar su estado'}
                 {activeSection === 'leads' && 'Lista completa de leads con filtros'}
                 {activeSection === 'search' && 'Ejecuta busquedas en Google Maps desde el dashboard'}
+                {activeSection === 'campaigns' && 'Crea y envia campanas de correo, guarda plantillas por categoria'}
               </p>
             </div>
             <button onClick={fetchData}
