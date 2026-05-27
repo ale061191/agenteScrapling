@@ -11,8 +11,10 @@ import MetricListModal from '@/components/MetricListModal'
 import CampaignForm from '@/components/CampaignForm'
 import TrendChart from '@/components/TrendChart'
 import EmailStatsChart from '@/components/EmailStatsChart'
-import VenezuelaMap from '@/components/VenezuelaMap'
+import dynamic from 'next/dynamic'
 import type { Lead } from '@/lib/data'
+
+const VenezuelaMap = dynamic(() => import('@/components/VenezuelaMap'), { ssr: false })
 
 interface Stats {
   total: number; withPhone: number; withWebsite: number; withAddress: number
