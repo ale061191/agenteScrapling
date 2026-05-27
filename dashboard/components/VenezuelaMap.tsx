@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { MapContainer, TileLayer, CircleMarker, Tooltip } from 'react-leaflet'
+import { MapContainer, TileLayer, CircleMarker, Tooltip, ZoomControl } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 
 interface Lead {
@@ -54,9 +54,12 @@ const STATE_LOCATIONS: Record<string, [number, number]> = {
   "Amazonas": [3.5, -66.0],
 }
 
+const VENEZUELA_BOUNDS: [[number, number], [number, number]] = [[0.5, -75.0], [13.0, -59.5]]
+
 export default function VenezuelaMap({ leads, onSelectLead }: Props) {
   const [mounted, setMounted] = useState(false)
-  useEffect(() => { setMounted(true) }, [])
+  const [fadeIn, setFadeIn] = useState(false)
+  useEffect(() => { setMounted(true); setTimeout(() => setFadeIn(true), 50) }, [])
 
   const stateGroups: StateGroup[] = useMemo(() => {
     const groups: Record<string, StateGroup> = {}
@@ -72,46 +75,63 @@ export default function VenezuelaMap({ leads, onSelectLead }: Props) {
     return Object.values(groups).filter(g => g.accepted > 0)
   }, [leads])
 
+  const totalAccepted = useMemo(() => leads.filter(l => l.status === 'aceptado').length, [leads])
+
   if (!mounted) {
     return (
-      <div className="flex items-center justify-center h-[350px] bg-gray-50 rounded-lg text-sm text-gray-400">
+      <div className="flex items-center justify-center h-[400px] bg-gray-100 rounded-xl text-sm text-gray-400">
         Cargando mapa...
       </div>
     )
   }
 
   return (
-    <div className="h-[350px] w-full rounded-lg overflow-hidden border border-gray-200">
+    <div className={`relative rounded-xl overflow-hidden border border-gray-200 shadow-sm transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}
+      style={{ height: '400px' }}>
       <MapContainer center={[8.0, -66.0]} zoom={5.5} scrollWheelZoom={false}
-        className="h-full w-full" zoomControl={false}>
+        className="h-full w-full"
+        maxBounds={VENEZUELA_BOUNDS} maxBoundsViscosity={1.0}
+        zoomControl={false}>
+        <ZoomControl position="topright" />
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
         {stateGroups.map(g => {
-          const r = Math.min(8 + g.accepted * 2, 20)
+          const r = Math.min(10 + g.accepted * 2.5, 26)
+          const firstAccepted = g.leads.find(l => l.status === 'aceptado')
           return (
             <CircleMarker key={g.state} center={[g.lat, g.lng]} radius={r}
-              pathOptions={{ color: '#22c55e', fillColor: 'rgba(34,197,94,0.7)', fillOpacity: 0.7, weight: 2 }}
+              pathOptions={{
+                color: '#16a34a',
+                fillColor: firstAccepted ? 'rgba(22,163,74,0.65)' : 'rgba(22,163,74,0.4)',
+                fillOpacity: 0.65,
+                weight: 2,
+              }}
               eventHandlers={{
-                click: () => {
-                  if (g.leads.length === 1 && g.leads[0].status === 'aceptado') {
-                    onSelectLead(g.leads[0])
-                  }
-                },
+                click: () => { if (firstAccepted) onSelectLead(firstAccepted) },
               }}>
-              <Tooltip direction="top" offset={[0, -r]}>
-                <div className="text-xs">
-                  <div className="font-semibold">{g.state}</div>
-                  <div>{g.accepted} aceptado{g.accepted !== 1 ? 's' : ''}</div>
-                  <div>{g.leads.length} total{g.leads.length !== 1 ? 'es' : ''}</div>
+              <Tooltip direction="top" offset={[0, -r]} className="rounded-lg shadow-lg border-0">
+                <div className="text-xs leading-relaxed min-w-[120px]">
+                  <div className="font-semibold text-gray-800 text-sm border-b pb-1 mb-1">{g.state}</div>
+                  <div className="text-green-700">{g.accepted} aceptado{g.accepted !== 1 ? 's' : ''}</div>
+                  <div className="text-gray-500">{g.leads.length} total{g.leads.length !== 1 ? 'es' : ''}</div>
+                  {firstAccepted && g.accepted > 1 && (
+                    <div className="text-blue-600 mt-1 text-[10px]">Click para ver detalle</div>
+                  )}
                 </div>
               </Tooltip>
+              {g.accepted >= 1 && (
+                <CircleMarker center={[g.lat, g.lng]} radius={r - 1}
+                  pathOptions={{ color: 'white', fillColor: 'transparent', fillOpacity: 0, weight: 0.8, dashArray: '3 3' }}
+                  pane="marker" />
+              )}
               {g.accepted > 1 && (
                 <CircleMarker center={[g.lat, g.lng]} radius={r}
-                  pathOptions={{ color: 'white', fillColor: 'transparent', fillOpacity: 0, weight: 2 }}
+                  pathOptions={{ color: 'transparent', fillColor: 'transparent', fillOpacity: 0, weight: 0 }}
                   pane="marker">
                   <Tooltip permanent direction="center" className="bg-transparent border-0 shadow-none">
-                    <span className="text-white font-bold text-xs pointer-events-none" style={{textShadow: '0 1px 2px rgba(0,0,0,0.5)'}}>
+                    <span className="text-white font-bold text-xs pointer-events-none select-none"
+                      style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>
                       {g.accepted}
                     </span>
                   </Tooltip>
@@ -121,6 +141,20 @@ export default function VenezuelaMap({ leads, onSelectLead }: Props) {
           )
         })}
       </MapContainer>
+
+      <div className="absolute bottom-3 left-3 z-[1000] bg-white/90 backdrop-blur rounded-lg shadow-sm border border-gray-200 px-3 py-2 text-xs">
+        <div className="flex items-center gap-4">
+          <span className="text-gray-600 font-medium">Total aceptados:</span>
+          <span className="text-green-700 font-bold text-sm">{totalAccepted}</span>
+          <span className="w-px h-4 bg-gray-300" />
+          <span className="text-gray-500">{stateGroups.length} estado{stateGroups.length !== 1 ? 's' : ''} con leads</span>
+        </div>
+      </div>
+
+      <div className="absolute bottom-3 right-3 z-[1000] bg-white/90 backdrop-blur rounded-lg shadow-sm border border-gray-200 px-2.5 py-1.5 text-[10px] text-gray-400 flex items-center gap-1.5">
+        <span className="inline-block w-2.5 h-2.5 rounded-full bg-green-600/60 border border-green-600" />
+        Lead aceptado
+      </div>
     </div>
   )
 }
