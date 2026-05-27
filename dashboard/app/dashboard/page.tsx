@@ -11,6 +11,7 @@ import MetricListModal from '@/components/MetricListModal'
 import CampaignForm from '@/components/CampaignForm'
 import TrendChart from '@/components/TrendChart'
 import EmailStatsChart from '@/components/EmailStatsChart'
+import VenezuelaMap from '@/components/VenezuelaMap'
 import type { Lead } from '@/lib/data'
 
 interface Stats {
@@ -391,6 +392,12 @@ export default function DashboardPage() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
                 <TrendChart data={acceptanceTrend} title="Leads Aceptados (ultimos 30 dias)" color="#059669" emptyText="Ningun lead aceptado aun" />
                 <EmailStatsChart data={trendData.campaign_trend} />
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mt-6">
+                <h3 className="font-semibold text-gray-700 mb-1">Mapa de Leads Aceptados</h3>
+                <p className="text-xs text-gray-400 mb-4">Distribucion geografica por estado</p>
+                <VenezuelaMap leads={leads} onSelectLead={setSelectedLead} />
               </div>
             </div>
           )}
