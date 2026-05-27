@@ -3,6 +3,9 @@ import { spawn } from 'child_process'
 import path from 'path'
 import fs from 'fs'
 
+export const dynamic = 'force-dynamic'
+
+const IS_VERCEL = !!process.env.VERCEL
 const DATA_DIR = path.join(process.cwd(), '..', 'leads_data')
 const JOBS_FILE = path.join(DATA_DIR, 'search_jobs.json')
 const PYTHON_EXE = 'C:\\Users\\Voltaje Plus\\AppData\\Local\\Python\\bin\\python.exe'
@@ -19,6 +22,7 @@ interface Job {
   googleSearch: boolean
   paginasAmarillas: boolean
   social: boolean
+  tiktok: boolean
   status: 'running' | 'done' | 'error'
   started: string
   finished?: string
@@ -37,14 +41,18 @@ function writeJobs(jobs: Record<string, Job>) {
 }
 
 export async function POST(request: NextRequest) {
+  if (IS_VERCEL) {
+    return NextResponse.json({ error: 'La busqueda de leads solo funciona en modo local (tu PC). El dashboard en la nube solo muestra y gestiona leads existentes.' }, { status: 400 })
+  }
+
   const body = await request.json()
-  const { category, state, city, parish, sector, deep, googleSearch, paginasAmarillas, social } = body
+  const { category, state, city, parish, sector, deep, googleSearch, paginasAmarillas, social, tiktok } = body
   if (!category || !state || !city) {
     return NextResponse.json({ error: 'category, state, and city are required' }, { status: 400 })
   }
 
   const jobId = `search_${Date.now()}`
-  const job: Job = { jobId, category, state, city, parish, sector, deep: !!deep, googleSearch: !!googleSearch, paginasAmarillas: !!paginasAmarillas, social: !!social, status: 'running', started: new Date().toISOString() }
+  const job: Job = { jobId, category, state, city, parish, sector, deep: !!deep, googleSearch: !!googleSearch, paginasAmarillas: !!paginasAmarillas, social: !!social, tiktok: !!tiktok, status: 'running', started: new Date().toISOString() }
 
   const jobs = readJobs()
   jobs[jobId] = job
@@ -56,6 +64,7 @@ export async function POST(request: NextRequest) {
     ...(googleSearch ? ['--gs'] : []),
     ...(paginasAmarillas ? ['--pa'] : []),
     ...(social ? ['--social'] : []),
+    ...(tiktok ? ['--tiktok'] : []),
   ]
   const args = ['run', ...flags, category, state, cityArg]
 
@@ -84,6 +93,10 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  if (IS_VERCEL) {
+    return NextResponse.json({ jobs: [] })
+  }
+
   const { searchParams } = new URL(request.url)
   const jobId = searchParams.get('jobId')
   const jobs = readJobs()
@@ -95,6 +108,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  if (IS_VERCEL) {
+    return NextResponse.json({ success: true })
+  }
+
   const { searchParams } = new URL(request.url)
   const jobId = searchParams.get('jobId')
   const jobs = readJobs()

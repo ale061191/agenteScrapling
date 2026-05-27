@@ -20,6 +20,7 @@ def print_menu():
     print("    run --gs   [categoria] [estado] [ciudad] + Google Search (local pack)")
     print("    run --pa   [categoria] [estado] [ciudad] + Paginas Amarillas VE (telefonos)")
     print("    run --social [categoria] [estado] [ciudad] + Redes Sociales (Facebook/Instagram)")
+    print("    run --tiktok [categoria] [estado] [ciudad] + TikTok (perfiles)")
     print("    export                                  Exportar a CSV/JSON")
     print("    delete --all                            Eliminar todos los leads")
     print("    delete --ids 1,2,3                      Eliminar leads por IDs")
@@ -28,6 +29,7 @@ def print_menu():
     print("    campaign send --ids 1,2,3               Enviar campana a leads especificos")
     print("    campaign send --filters ...             Enviar campana por filtros")
     print("    campaign history                        Ver historial de envios")
+    print("    supabase-sync                           Sincronizar con Supabase")
     print("    stats                                   Estadisticas")
     print("    categories                              Listar categorias")
     print("    locations                               Listar estados/ciudades")
@@ -63,7 +65,8 @@ def main():
         gs = "--gs" in args
         pa = "--pa" in args
         social = "--social" in args
-        args = [a for a in args if a not in ("--deep", "--gs", "--pa", "--social")]
+        tiktok = "--tiktok" in args
+        args = [a for a in args if a not in ("--deep", "--gs", "--pa", "--social", "--tiktok")]
         cmd = args[0].lower() if args else "help"
         if cmd == "run":
             cat = args[1] if len(args) > 1 else None
@@ -72,7 +75,7 @@ def main():
             city = city.replace("_", " ") if city else None
             parish = parish.replace("_", " ") if parish else None
             sector = sector.replace("_", " ") if sector else None
-            kw = dict(deep=deep, include_google_search=gs, include_paginas_amarillas=pa, include_social=social)
+            kw = dict(deep=deep, include_google_search=gs, include_paginas_amarillas=pa, include_social=social, include_tiktok=tiktok)
             if cat and state and city:
                 runner.run_category(cat, state=state, city=city, parish=parish, sector=sector, **kw)
             elif cat and state:
@@ -80,7 +83,7 @@ def main():
             elif cat:
                 runner.run_category(cat, **kw)
             else:
-                runner.run_all(deep=deep, include_google_search=gs, include_paginas_amarillas=pa, include_social=social)
+                runner.run_all(deep=deep, include_google_search=gs, include_paginas_amarillas=pa, include_social=social, include_tiktok=tiktok)
             runner.export()
         elif cmd == "export":
             runner.export()
@@ -199,6 +202,9 @@ def main():
                 else:
                     for log in logs:
                         print(f"  [{log['sent_at'][:19]}] Lead {log['lead_id']} -> {log.get('recipient','?')}: {log['status']} {log.get('error','')}")
+        elif cmd == "supabase-sync":
+            from lead_finder.supabase_sync import main as supabase_sync_main
+            supabase_sync_main()
         elif cmd == "locations":
             print("\n  Estados y ciudades de Venezuela:")
             for state, cities in VENEZUELA_LOCATIONS.items():
@@ -211,7 +217,6 @@ def main():
 
     print_menu()
     while True:
-        try:
             cmd = input("  lead_finder> ").strip()
         except (EOFError, KeyboardInterrupt):
             print(); break
@@ -222,7 +227,8 @@ def main():
         gs = "--gs" in args
         pa = "--pa" in args
         social = "--social" in args
-        args = [a for a in args if a not in ("--deep", "--gs", "--pa", "--social")]
+        tiktok = "--tiktok" in args
+        args = [a for a in args if a not in ("--deep", "--gs", "--pa", "--social", "--tiktok")]
         c = args[0].lower() if args else ""
         if c == "run":
             cat = args[1] if len(args) > 1 else None
@@ -231,7 +237,7 @@ def main():
             city = city.replace("_", " ") if city else None
             parish = parish.replace("_", " ") if parish else None
             sector = sector.replace("_", " ") if sector else None
-            kw = dict(deep=deep, include_google_search=gs, include_paginas_amarillas=pa, include_social=social)
+            kw = dict(deep=deep, include_google_search=gs, include_paginas_amarillas=pa, include_social=social, include_tiktok=tiktok)
             if cat and state and city:
                 runner.run_category(cat, state=state, city=city, parish=parish, sector=sector, **kw)
             elif cat and state:
@@ -239,7 +245,7 @@ def main():
             elif cat:
                 runner.run_category(cat, **kw)
             else:
-                runner.run_all(deep=deep, include_google_search=gs, include_paginas_amarillas=pa, include_social=social)
+                runner.run_all(deep=deep, include_google_search=gs, include_paginas_amarillas=pa, include_social=social, include_tiktok=tiktok)
             runner.export()
         elif c == "export": runner.export()
         elif c == "stats":
@@ -320,6 +326,9 @@ def main():
                 else:
                     for log in logs:
                         print(f"  [{log['sent_at'][:19]}] Lead {log['lead_id']} -> {log.get('recipient','?')}: {log['status']} {log.get('error','')}")
+        elif c == "supabase-sync":
+            from lead_finder.supabase_sync import main as supabase_sync_main
+            supabase_sync_main()
         elif c == "help": print_menu()
         else: print("  [!] Desconocido. Escribe 'help'.")
 

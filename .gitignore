@@ -36,5 +36,6 @@ leads_data/smtp_config.json
 Thumbs.db
 .DS_Store
 
+*.tsbuildinfo
 # Logs
 *.log

@@ -1,9 +1,6 @@
-import fs from 'fs'
-import path from 'path'
+import { getSupabase } from './supabase'
 
-const DATA_DIR = path.join(process.cwd(), '..', 'leads_data')
-const LEADS_FILE = path.join(DATA_DIR, 'leads.json')
-const STATUS_FILE = path.join(DATA_DIR, 'status.json')
+function db() { return getSupabase() }
 
 export interface Lead {
   id: number
@@ -29,118 +26,100 @@ export interface Lead {
   changed_at?: string
 }
 
-interface StatusEntry {
-  status: string
-  notes: string
-  changed_at?: string
-}
-
-function readJSON<T>(file: string, fallback: T): T {
-  try {
-    if (fs.existsSync(file)) {
-      return JSON.parse(fs.readFileSync(file, 'utf-8'))
-    }
-  } catch {}
-  return fallback
-}
-
-function readStatusMap(): Record<string, StatusEntry> {
-  return readJSON<Record<string, StatusEntry>>(STATUS_FILE, {})
-}
+const VALID_STATUSES = ['frio', 'tibio', 'caliente', 'contactado', 'aceptado', 'rechazado']
 
 function cleanStatus(s: string | null | undefined): string {
   const v = (s || 'frio').toLowerCase()
-  return ['frio', 'tibio', 'caliente', 'contactado', 'aceptado', 'rechazado'].includes(v) ? v : 'frio'
+  return VALID_STATUSES.includes(v) ? v : 'frio'
 }
 
-export function getAllLeads(filters?: {
+function rowToLead(row: any): Lead {
+  return {
+    id: row.id,
+    name: row.name || '',
+    category: row.category || '',
+    location: row.location || '',
+    state: row.state || null,
+    city: row.city || null,
+    address: row.address || null,
+    phone: row.phone || null,
+    website: row.website || null,
+    email: row.email || null,
+    facebook: row.facebook || null,
+    instagram: row.instagram || null,
+    twitter: row.twitter || null,
+    rating: row.rating ?? null,
+    reviews_count: row.reviews_count ?? null,
+    source: row.source || 'google_maps',
+    source_url: row.source_url || '',
+    timestamp: row.timestamp || '',
+    notes: row.notes || '',
+    status: cleanStatus(row.status),
+    changed_at: row.changed_at || undefined,
+  }
+}
+
+export async function getAllLeads(filters?: {
   category?: string; status?: string; location?: string; state?: string; city?: string; search?: string
-}): Lead[] {
-  const raw = readJSON<any[]>(LEADS_FILE, [])
-  const statusMap = readStatusMap()
+}): Promise<Lead[]> {
+  let query = db().from('leads').select('*').order('id', { ascending: true })
 
-  const leads: Lead[] = raw.map((item: any, idx: number) => {
-    const id = item.id || idx + 1
-    const saved = statusMap[String(id)] || {}
-    return {
-      id,
-      name: item.name || '',
-      category: item.category || '',
-      location: item.location || '',
-      state: item.state || null,
-      city: item.city || null,
-      address: item.address || null,
-      phone: item.phone || null,
-      website: item.website || null,
-      email: item.email || null,
-      facebook: item.facebook || null,
-      instagram: item.instagram || null,
-      twitter: item.twitter || null,
-      rating: item.rating ?? null,
-      reviews_count: item.reviews_count ?? null,
-      source: item.source || 'google_maps',
-      source_url: item.source_url || '',
-      timestamp: item.timestamp || '',
-      notes: saved.notes || item.notes || '',
-      status: cleanStatus(saved.status || item.status),
-      changed_at: saved.changed_at,
-    }
-  })
-
-  let filtered = leads
-  if (filters?.category) filtered = filtered.filter(l => l.category === filters.category)
-  if (filters?.status) filtered = filtered.filter(l => l.status === filters.status)
-  if (filters?.location) filtered = filtered.filter(l => l.location === filters.location)
-  if (filters?.state) filtered = filtered.filter(l => l.state === filters.state)
-  if (filters?.city) filtered = filtered.filter(l => l.city === filters.city)
+  if (filters?.category) query = query.eq('category', filters.category)
+  if (filters?.status) query = query.eq('status', filters.status)
+  if (filters?.location) query = query.eq('location', filters.location)
+  if (filters?.state) query = query.eq('state', filters.state)
+  if (filters?.city) query = query.eq('city', filters.city)
   if (filters?.search) {
-    const q = filters.search.toLowerCase()
-    filtered = filtered.filter(l =>
-      l.name.toLowerCase().includes(q) ||
-      (l.address && l.address.toLowerCase().includes(q)) ||
-      (l.phone && l.phone.includes(q)) ||
-      l.notes.toLowerCase().includes(q)
-    )
+    const q = filters.search
+    query = query.or(`name.ilike.%${q}%,address.ilike.%${q}%,phone.ilike.%${q}%,notes.ilike.%${q}%`)
   }
-  return filtered
+
+  const { data, error } = await query
+  if (error) throw error
+  return (data || []).map(rowToLead)
 }
 
-export function getLeadById(id: number): Lead | null {
-  return getAllLeads().find(l => l.id === id) || null
+export async function getLeadById(id: number): Promise<Lead | null> {
+  const { data, error } = await db().from('leads').select('*').eq('id', id).single()
+  if (error || !data) return null
+  return rowToLead(data)
 }
 
-export function updateLead(id: number, data: Partial<{ status: string; notes: string }>): boolean {
-  const statusMap = readStatusMap()
-  const key = String(id)
-  const entry = statusMap[key] || { status: 'frio', notes: '' }
+export async function updateLead(id: number, data: Partial<{ status: string; notes: string }>): Promise<boolean> {
+  const updateData: Record<string, any> = {}
   if (data.status) {
-    entry.status = cleanStatus(data.status)
-    entry.changed_at = new Date().toISOString().slice(0, 10)
+    updateData.status = cleanStatus(data.status)
+    updateData.changed_at = new Date().toISOString().slice(0, 10)
   }
-  if (data.notes !== undefined) entry.notes = data.notes
-  statusMap[key] = entry
-  try {
-    fs.writeFileSync(STATUS_FILE, JSON.stringify(statusMap, null, 2), 'utf-8')
-    return true
-  } catch { return false }
+  if (data.notes !== undefined) updateData.notes = data.notes
+  if (Object.keys(updateData).length === 0) return false
+
+  const { error } = await db().from('leads').update(updateData).eq('id', id)
+  return !error
 }
 
-export function getStats() {
-  const leads = getAllLeads()
-  const total = leads.length
-  const withPhone = leads.filter(l => l.phone).length
-  const withWebsite = leads.filter(l => l.website).length
-  const withAddress = leads.filter(l => l.address).length
-  const ratings = leads.filter(l => l.rating != null).map(l => l.rating!)
-  const avgRating = ratings.length ? (ratings.reduce((a, b) => a + b, 0) / ratings.length) : 0
+export async function getStats() {
+  const { data: allLeads, error } = await db().from('leads').select('*')
+  if (error || !allLeads) return {
+    total: 0, withPhone: 0, withWebsite: 0, withAddress: 0,
+    avgRating: 0, byStatus: {}, byCategory: {}, byLocation: {}, byState: {},
+  }
+
+  const total = allLeads.length
+  const withPhone = allLeads.filter((l: any) => l.phone).length
+  const withWebsite = allLeads.filter((l: any) => l.website).length
+  const withAddress = allLeads.filter((l: any) => l.address).length
+  const ratings = allLeads.filter((l: any) => l.rating != null).map((l: any) => l.rating!)
+  const avgRating = ratings.length ? (ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length) : 0
 
   const byStatus: Record<string, number> = {}
   const byCategory: Record<string, number> = {}
   const byLocation: Record<string, number> = {}
   const byState: Record<string, number> = {}
 
-  leads.forEach(l => {
-    byStatus[l.status] = (byStatus[l.status] || 0) + 1
+  allLeads.forEach((l: any) => {
+    const s = cleanStatus(l.status)
+    byStatus[s] = (byStatus[s] || 0) + 1
     byCategory[l.category] = (byCategory[l.category] || 0) + 1
     byLocation[l.location] = (byLocation[l.location] || 0) + 1
     if (l.state) byState[l.state] = (byState[l.state] || 0) + 1

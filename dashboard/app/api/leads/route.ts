@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAllLeads } from '@/lib/data'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const filters = {
@@ -12,6 +14,6 @@ export async function GET(request: NextRequest) {
     search: searchParams.get('search') || undefined,
   }
   const hasFilters = Object.values(filters).some(v => v !== undefined)
-  const leads = getAllLeads(hasFilters ? filters : undefined)
+  const leads = await getAllLeads(hasFilters ? filters : undefined)
   return NextResponse.json({ leads })
 }

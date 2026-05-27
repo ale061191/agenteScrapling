@@ -1,13 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSupabase } from '@/lib/supabase'
 import { spawn } from 'child_process'
 import path from 'path'
 
+export const dynamic = 'force-dynamic'
+
+const IS_VERCEL = !!process.env.VERCEL
 const PYTHON_EXE = 'C:\\Users\\Voltaje Plus\\AppData\\Local\\Python\\bin\\python.exe'
 const MAIN_PY = path.join(process.cwd(), '..', 'main.py')
+
+async function deleteFromSupabase(ids?: number[]) {
+  const supabase = getSupabase()
+  let query = supabase.from('leads').delete()
+  if (ids && ids.length > 0) {
+    query = query.in('id', ids)
+  }
+  const { data, error } = await query
+  if (error) throw error
+  return data || []
+}
 
 export async function POST(request: NextRequest) {
   const body = await request.json()
   const { ids, all } = body
+
+  if (IS_VERCEL) {
+    try {
+      const deleted = await deleteFromSupabase(all ? undefined : ids)
+      const count = all ? (deleted?.length || 0) : (ids?.length || 0)
+      return NextResponse.json({ success: true, deletedCount: count, cloud: true })
+    } catch (err: any) {
+      return NextResponse.json({ success: false, error: err.message }, { status: 500 })
+    }
+  }
+
   if (!all && (!ids || !Array.isArray(ids) || ids.length === 0)) {
     return NextResponse.json({ error: 'Provide ids array or all: true' }, { status: 400 })
   }

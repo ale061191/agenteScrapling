@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { spawn } from 'child_process'
 import path from 'path'
-import fs from 'fs'
 
+export const dynamic = 'force-dynamic'
+const IS_VERCEL = !!process.env.VERCEL
 const PYTHON_EXE = 'C:\\Users\\Voltaje Plus\\AppData\\Local\\Python\\bin\\python.exe'
 const MAIN_PY = path.join(process.cwd(), '..', 'main.py')
 const CAMPAIGNS_DIR = path.join(process.cwd(), '..', 'leads_data', 'campaigns')
 
 export async function POST(request: NextRequest) {
+  if (IS_VERCEL) {
+    return NextResponse.json({ success: false, sent: 0, cloud: true, message: 'Campanas solo disponibles en modo local' }, { status: 400 })
+  }
+
   const body = await request.json()
   const { leadIds, subject, bodyHtml, files, filters } = body
 
@@ -17,9 +22,7 @@ export async function POST(request: NextRequest) {
 
   const attachArgs: string[] = []
   if (files && files.length > 0) {
-    for (const f of files) {
-      attachArgs.push('--attach', path.join(CAMPAIGNS_DIR, f))
-    }
+    for (const f of files) attachArgs.push('--attach', path.join(CAMPAIGNS_DIR, f))
   }
 
   const idsArg = leadIds && leadIds.length > 0 ? `--ids=${leadIds.join(',')}` : ''
@@ -40,9 +43,7 @@ export async function POST(request: NextRequest) {
 
   return new Promise<NextResponse>((resolve) => {
     const proc = spawn(PYTHON_EXE, [MAIN_PY, ...procArgs], {
-      cwd: path.join(process.cwd(), '..'),
-      windowsHide: true,
-      stdio: ['ignore', 'pipe', 'pipe'],
+      cwd: path.join(process.cwd(), '..'), windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'],
     })
     let output = ''
     proc.stdout.on('data', (d: Buffer) => { output += d.toString() })

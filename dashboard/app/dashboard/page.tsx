@@ -92,6 +92,7 @@ export default function DashboardPage() {
   const [sGoogleSearch, setSGoogleSearch] = useState(false)
   const [sPaginasAmarillas, setSPaginasAmarillas] = useState(false)
   const [sSocial, setSSocial] = useState(false)
+  const [sTikTok, setSTikTok] = useState(false)
   const [searching, setSearching] = useState(false)
   const [searchJobId, setSearchJobId] = useState<string | null>(null)
   const [searchResult, setSearchResult] = useState<string | null>(null)
@@ -225,6 +226,7 @@ export default function DashboardPage() {
           googleSearch: sGoogleSearch,
           paginasAmarillas: sPaginasAmarillas,
           social: sSocial,
+          tiktok: sTikTok,
         }),
       })
       const data = await res.json()
@@ -497,46 +499,66 @@ export default function DashboardPage() {
                       placeholder="Ej: Las Mercedes, El Hatillo..."
                       className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition-all" />
                   </div>
-                  <div className="flex items-end gap-4 pb-1">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <div className="relative">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+                    <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                      <div className="relative shrink-0">
                         <input type="checkbox" checked={sDeep} onChange={e => setSDeep(e.target.checked)}
                           className="sr-only peer" />
                         <div className="w-9 h-5 bg-gray-200 rounded-full peer-checked:bg-blue-600 transition-colors duration-200"></div>
                         <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform duration-200"></div>
                       </div>
-                      <span className="text-sm text-gray-600">Modo profundo</span>
-                      <span className="text-[10px] text-gray-400">(obtiene telefonos y websites)</span>
+                      <div className="min-w-0">
+                        <div className="text-sm text-gray-600 leading-tight">Modo profundo</div>
+                        <div className="text-[9px] text-gray-400 leading-tight">telefonos y websites</div>
+                      </div>
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <div className="relative">
+                    <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                      <div className="relative shrink-0">
                         <input type="checkbox" checked={sGoogleSearch} onChange={e => setSGoogleSearch(e.target.checked)}
                           className="sr-only peer" />
                         <div className="w-9 h-5 bg-gray-200 rounded-full peer-checked:bg-green-600 transition-colors duration-200"></div>
                         <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform duration-200"></div>
                       </div>
-                      <span className="text-sm text-gray-600">Google Search</span>
-                      <span className="text-[10px] text-gray-400">(local pack - telefonos/websites directos)</span>
+                      <div className="min-w-0">
+                        <div className="text-sm text-gray-600 leading-tight">Google Search</div>
+                        <div className="text-[9px] text-gray-400 leading-tight">local pack</div>
+                      </div>
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <div className="relative">
+                    <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                      <div className="relative shrink-0">
                         <input type="checkbox" checked={sPaginasAmarillas} onChange={e => setSPaginasAmarillas(e.target.checked)}
                           className="sr-only peer" />
                         <div className="w-9 h-5 bg-gray-200 rounded-full peer-checked:bg-orange-600 transition-colors duration-200"></div>
                         <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform duration-200"></div>
                       </div>
-                      <span className="text-sm text-gray-600">Paginas Amarillas</span>
-                      <span className="text-[10px] text-gray-400">(directorio VE - telefonos fijos)</span>
+                      <div className="min-w-0">
+                        <div className="text-sm text-gray-600 leading-tight">Paginas Amarillas</div>
+                        <div className="text-[9px] text-gray-400 leading-tight">directorio VE</div>
+                      </div>
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <div className="relative">
+                    <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                      <div className="relative shrink-0">
                         <input type="checkbox" checked={sSocial} onChange={e => setSSocial(e.target.checked)}
                           className="sr-only peer" />
                         <div className="w-9 h-5 bg-gray-200 rounded-full peer-checked:bg-purple-600 transition-colors duration-200"></div>
                         <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform duration-200"></div>
                       </div>
-                      <span className="text-sm text-gray-600">Redes Sociales</span>
-                      <span className="text-[10px] text-gray-400">(Google Search - Facebook/Instagram)</span>
+                      <div className="min-w-0">
+                        <div className="text-sm text-gray-600 leading-tight">Redes Sociales</div>
+                        <div className="text-[9px] text-gray-400 leading-tight">Facebook/Instagram</div>
+                      </div>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                      <div className="relative shrink-0">
+                        <input type="checkbox" checked={sTikTok} onChange={e => setSTikTok(e.target.checked)}
+                          className="sr-only peer" />
+                        <div className="w-9 h-5 bg-gray-200 rounded-full peer-checked:bg-pink-600 transition-colors duration-200"></div>
+                        <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform duration-200"></div>
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-sm text-gray-600 leading-tight">TikTok</div>
+                        <div className="text-[9px] text-gray-400 leading-tight">perfiles bio/seguidores</div>
+                      </div>
                     </label>
                   </div>
                 </div>
@@ -616,7 +638,11 @@ export default function DashboardPage() {
                               <polyline points="3 6 5 6 21 6"/>
                               <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
                             </svg>
-                          </button>
+                </button>
+
+                <p className="mt-2 text-[10px] text-gray-400 text-center">
+                  La busqueda ejecuta Scrapling en tu PC. En la version cloud solo gestionas leads existentes.
+                </p>
                         </div>
                       </div>
                     ))}

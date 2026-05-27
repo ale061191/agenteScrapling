@@ -7,6 +7,7 @@ from lead_finder.exporter import export_csv, export_json
 from lead_finder.spiders.maps import MapsSpider
 from lead_finder.spiders.google_search import GoogleSearchSpider
 from lead_finder.spiders.paginas_amarillas import PaginasAmarillasSpider
+from lead_finder.spiders.tiktok import TikTokSpider
 
 
 def _loc_string(state: str, city: str) -> str:
@@ -93,8 +94,27 @@ class Runner:
         start = time.time()
         try:
             leads = GoogleSearchSpider(self.settings).search_social(category, loc,
-                                                                     state=state, city=city,
-                                                                     parish=parish, sector=sector)
+                                                                      state=state, city=city,
+                                                                      parish=parish, sector=sector)
+        except Exception as e:
+            print(f"  [!] Error en {category}/{state}/{city}: {e}")
+            return 0
+        saved = self.storage.save_many(leads)
+        elapsed = time.time() - start
+        print(f"     -> {len(leads)} encontrados, {saved} nuevos ({elapsed:.0f}s)")
+        return saved
+
+    def _run_tiktok(self, category: str, state: str, city: str,
+                    parish: Optional[str] = None,
+                    sector: Optional[str] = None) -> int:
+        loc = _build_loc(city, state, parish, sector)
+        where = sector or parish or city
+        print(f"  [~] [tiktok] {category} en {where}, {state} ...")
+        start = time.time()
+        try:
+            leads = TikTokSpider(self.settings).search(category, loc,
+                                                       state=state, city=city,
+                                                       parish=parish, sector=sector)
         except Exception as e:
             print(f"  [!] Error en {category}/{state}/{city}: {e}")
             return 0
@@ -108,6 +128,7 @@ class Runner:
                      include_google_search: bool,
                      include_paginas_amarillas: bool,
                      include_social: bool,
+                     include_tiktok: bool = False,
                      parish: Optional[str] = None,
                      sector: Optional[str] = None) -> int:
         total = self._run_maps(category, state, city, deep, max_deep, parish, sector)
@@ -117,12 +138,15 @@ class Runner:
             total += self._run_paginas_amarillas(category, state, city, parish, sector)
         if include_social:
             total += self._run_social(category, state, city, parish, sector)
+        if include_tiktok:
+            total += self._run_tiktok(category, state, city, parish, sector)
         return total
 
     def run_all(self, deep: bool = False, max_deep: int = 5,
                 include_google_search: bool = False,
                 include_paginas_amarillas: bool = False,
-                include_social: bool = False) -> int:
+                include_social: bool = False,
+                include_tiktok: bool = False) -> int:
         total = 0
         print(f"\n{'='*60}")
         print(f"  LEAD FINDER - Venezuela (todo el pais)")
@@ -135,7 +159,8 @@ class Runner:
                 total += self._run_sources(cat, s, c, deep, max_deep,
                                            include_google_search,
                                            include_paginas_amarillas,
-                                           include_social)
+                                           include_social,
+                                           include_tiktok=include_tiktok)
 
         print(f"\n{'='*60}")
         print(f"  [+] Total leads nuevos: {total}")
@@ -151,7 +176,8 @@ class Runner:
                      sector: Optional[str] = None,
                      include_google_search: bool = False,
                      include_paginas_amarillas: bool = False,
-                     include_social: bool = False) -> int:
+                     include_social: bool = False,
+                     include_tiktok: bool = False) -> int:
         total = 0
 
         def _run_sources_for(s, c):
@@ -159,7 +185,8 @@ class Runner:
                                      include_google_search,
                                      include_paginas_amarillas,
                                      include_social,
-                                     parish, sector)
+                                     include_tiktok=include_tiktok,
+                                     parish=parish, sector=sector)
 
         if state and city:
             total += _run_sources_for(state, city)
@@ -218,6 +245,19 @@ class Runner:
                     elapsed = time.time() - start
                     total += s_saved
                     print(f"     -> {len(s_leads)} encontrados, {s_saved} nuevos ({elapsed:.0f}s)")
+                if include_tiktok:
+                    tk = TikTokSpider(self.settings)
+                    print(f"  [~] [tiktok] Buscando: {category} en {loc} ...")
+                    start = time.time()
+                    try:
+                        tk_leads = tk.search(category, loc)
+                    except Exception as e:
+                        print(f"  [!] Error: {e}")
+                        continue
+                    tk_saved = self.storage.save_many(tk_leads)
+                    elapsed = time.time() - start
+                    total += tk_saved
+                    print(f"     -> {len(tk_leads)} encontrados, {tk_saved} nuevos ({elapsed:.0f}s)")
         else:
             for s, c in get_all_venezuela_location_tuples():
                 total += _run_sources_for(s, c)
