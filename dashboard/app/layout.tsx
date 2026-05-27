@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Lead Finder Dashboard',
+  title: 'Nova Tech AI | Lead Finder Venezuela',
   description: 'Sistema de prospeccion de clientes',
 }
 

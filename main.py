@@ -8,8 +8,8 @@ from lead_finder.campaign import send_campaign, send_campaign_by_filters, load_s
 
 def print_banner():
     print()
-    print("  == LEAD FINDER v2.0 - Venezuela ==")
-    print("  Sistema de prospeccion comercial con Scrapling")
+    print("  == Nova Tech AI - Lead Finder Venezuela ==")
+    print("  Prospeccion comercial inteligente con Scrapling")
     print()
 
 def print_menu():
@@ -138,7 +138,7 @@ def main():
                     port = int(_arg_val("--port") or input("  SMTP port (default 587): ") or "587")
                     user = _arg_val("--user") or input("  Correo Gmail: ")
                     pwd = _arg_val("--password") or input("  App Password (16 caracteres): ")
-                    name = _arg_val("--from-name") or input("  Nombre del remitente (default Lead Finder): ") or "Lead Finder"
+                    name = _arg_val("--from-name") or input("  Nombre del remitente (default Nova Tech AI): ") or "Nova Tech AI"
                     save_smtp_config(host, port, user, pwd, from_name=name)
                     print("  [+] Config SMTP guardada en leads_data/smtp_config.json")
                 else:
@@ -146,7 +146,7 @@ def main():
                     port = int(input("  SMTP port (default 587): ") or "587")
                     user = input("  Correo Gmail: ")
                     pwd = input("  App Password (16 caracteres): ")
-                    name = input("  Nombre del remitente (default Lead Finder): ") or "Lead Finder"
+                    name = input("  Nombre del remitente (default Nova Tech AI): ") or "Nova Tech AI"
                     save_smtp_config(host, port, user, pwd, from_name=name)
                     print("  [+] Config SMTP guardada en leads_data/smtp_config.json")
             elif sub == "send":
@@ -217,7 +217,7 @@ def main():
 
     print_menu()
     while True:
-            cmd = input("  lead_finder> ").strip()
+            cmd = input("  nova_tech> ").strip()
         except (EOFError, KeyboardInterrupt):
             print(); break
         if not cmd: continue
@@ -289,7 +289,7 @@ def main():
                 port = int(input("  SMTP port (default 587): ") or "587")
                 user = input("  Correo Gmail: ")
                 pwd = input("  App Password (16 caracteres): ")
-                name = input("  Nombre del remitente (default Lead Finder): ") or "Lead Finder"
+                name = input("  Nombre del remitente (default Nova Tech AI): ") or "Nova Tech AI"
                 save_smtp_config(host, port, user, pwd, from_name=name)
                 print("  [+] Configuracion SMTP guardada")
             elif sub == "send":

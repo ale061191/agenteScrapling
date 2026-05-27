@@ -1,4 +1,4 @@
-# Lead Finder - Prospeccion Comercial Venezuela
+# Nova Tech AI - Lead Finder Venezuela
 
 ## Project Overview
 Lead generation system using Scrapling to find potential clients for power bank rental stations in Venezuela. Targets restaurants, clubs, hotels, malls, parks, airports, gyms, hospitals/clinics across 24 Venezuelan states.

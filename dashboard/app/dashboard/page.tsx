@@ -280,10 +280,10 @@ export default function DashboardPage() {
       <aside className="w-64 bg-white border-r border-gray-200 flex flex-col fixed h-full z-30">
         <div className="p-5 border-b border-gray-100">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center text-white text-sm font-bold shadow-sm">LF</div>
+            <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center text-white text-sm font-bold shadow-sm">NT</div>
             <div>
-              <h1 className="text-sm font-bold text-gray-800">Lead Finder</h1>
-              <p className="text-[10px] text-gray-400">Prospeccion Venezuela</p>
+              <h1 className="text-sm font-bold text-gray-800">Nova Tech AI</h1>
+              <p className="text-[10px] text-gray-400">Lead Finder Venezuela</p>
             </div>
           </div>
         </div>
