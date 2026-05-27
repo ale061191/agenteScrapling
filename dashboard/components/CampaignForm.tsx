@@ -2,6 +2,14 @@
 
 import { useState, useEffect } from 'react'
 
+const BUSINESS_CATEGORIES = [
+  "restaurantes", "hoteles", "centros comerciales", "gimnasios",
+  "hospitales", "clinicas", "discotecas", "clubes nocturnos",
+  "parques", "aeropuertos", "bares", "cafeterias",
+  "centros deportivos", "cines", "universidades", "supermercados",
+  "teatros", "centros de convenciones", "plazas", "farmacias",
+]
+
 function plainTextToHtml(text: string): string {
   return text
     .split(/\n\s*\n/)
@@ -212,9 +220,11 @@ export default function CampaignForm({ leadsCount, onSend, selectedIds, filters 
           </div>
           <div className="flex-1">
             <label className="block text-xs font-medium text-gray-600 mb-1.5">Categoria</label>
-            <input value={templateCategory} onChange={e => setTemplateCategory(e.target.value)}
-              placeholder={filters.category || "Ej: restaurantes"}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition-all" />
+            <select value={templateCategory} onChange={e => setTemplateCategory(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition-all bg-white">
+              <option value="">Sin categoria</option>
+              {BUSINESS_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
           </div>
           <div className="flex items-end">
             <button onClick={handleSaveTemplate} disabled={savingTemplate || !templateName || !subject || !body}
