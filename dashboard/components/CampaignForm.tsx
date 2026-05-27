@@ -14,6 +14,18 @@ function plainTextToHtml(text: string): string {
     .join('')
 }
 
+interface Template {
+  id: string
+  name: string
+  category: string
+  subject: string
+  bodyPlain: string
+  bodyHtml: string
+  files: string[]
+  createdAt: string
+  updatedAt: string
+}
+
 interface Props {
   leadsCount: number
   onSend: (opts: {
@@ -38,6 +50,11 @@ export default function CampaignForm({ leadsCount, onSend, selectedIds, filters 
   const [historyTab, setHistoryTab] = useState<'all' | 'sent' | 'failed'>('all')
   const [history, setHistory] = useState<any[]>([])
   const [loadingHistory, setLoadingHistory] = useState(false)
+  const [templates, setTemplates] = useState<Template[]>([])
+  const [selectedTemplate, setSelectedTemplate] = useState('')
+  const [templateName, setTemplateName] = useState('')
+  const [templateCategory, setTemplateCategory] = useState('')
+  const [savingTemplate, setSavingTemplate] = useState(false)
 
   const fetchHistory = async () => {
     setLoadingHistory(true)
@@ -53,7 +70,64 @@ export default function CampaignForm({ leadsCount, onSend, selectedIds, filters 
     setLoadingHistory(false)
   }
 
-  useEffect(() => { fetchHistory() }, [])
+  const fetchTemplates = async () => {
+    try {
+      const res = await fetch('/api/campaigns/templates')
+      const data = await res.json()
+      setTemplates(data.templates || [])
+    } catch {}
+  }
+
+  useEffect(() => { fetchHistory(); fetchTemplates() }, [])
+
+  const handleTemplateSelect = (id: string) => {
+    setSelectedTemplate(id)
+    if (!id) return
+    const t = templates.find(t => t.id === id)
+    if (t) {
+      setSubject(t.subject)
+      setBody(t.bodyPlain)
+      setFiles(t.files || [])
+      setTemplateName(t.name)
+      setTemplateCategory(t.category || '')
+    }
+  }
+
+  const handleSaveTemplate = async () => {
+    if (!templateName || !subject || !body) return
+    setSavingTemplate(true)
+    try {
+      const existing = selectedTemplate ? templates.find(t => t.id === selectedTemplate) : null
+      const res = await fetch('/api/campaigns/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: existing?.id || undefined,
+          name: templateName,
+          category: templateCategory || filters.category || '',
+          subject,
+          bodyPlain: body,
+          bodyHtml: plainTextToHtml(body),
+          files,
+        }),
+      })
+      const data = await res.json()
+      if (data.success) setTemplates(data.templates)
+      await fetchTemplates()
+    } catch {}
+    setSavingTemplate(false)
+  }
+
+  const handleDeleteTemplate = async () => {
+    if (!selectedTemplate) return
+    try {
+      await fetch(`/api/campaigns/templates?id=${selectedTemplate}`, { method: 'DELETE' })
+      setSelectedTemplate('')
+      setTemplateName('')
+      setTemplateCategory('')
+      await fetchTemplates()
+    } catch {}
+  }
 
   const handleSend = async () => {
     if (!subject || !body) return
@@ -93,11 +167,66 @@ export default function CampaignForm({ leadsCount, onSend, selectedIds, filters 
     return true
   })
 
+  const categories = [...new Set(templates.map(t => t.category).filter(Boolean))]
+
   return (
     <div className="space-y-6 section-enter">
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
         <h3 className="font-semibold text-gray-700 mb-1">Nueva Campaña de Correo</h3>
         <p className="text-xs text-gray-400 mb-5">Redacta en texto plano, nosotros lo convertimos a HTML</p>
+
+        <div className="mb-5 p-3 bg-gray-50 rounded-lg border border-gray-100">
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs font-medium text-gray-600">Plantillas guardadas</label>
+          </div>
+          <div className="flex gap-2">
+            <select value={selectedTemplate} onChange={e => handleTemplateSelect(e.target.value)}
+              className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition-all bg-white">
+              <option value="">Seleccionar plantilla...</option>
+              {categories.map(cat => (
+                <optgroup key={cat} label={cat}>
+                  {templates.filter(t => t.category === cat).map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </optgroup>
+              ))}
+              {templates.filter(t => !t.category).map(t => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+            {selectedTemplate && (
+              <button onClick={handleDeleteTemplate}
+                className="px-3 py-2 text-xs text-red-600 hover:bg-red-50 border border-red-200 rounded-lg transition-colors">
+                Eliminar
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex gap-4 mb-4">
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">Nombre de plantilla</label>
+            <input value={templateName} onChange={e => setTemplateName(e.target.value)}
+              placeholder="Ej: Oferta restaurantes"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition-all" />
+          </div>
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">Categoria</label>
+            <input value={templateCategory} onChange={e => setTemplateCategory(e.target.value)}
+              placeholder={filters.category || "Ej: restaurantes"}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition-all" />
+          </div>
+          <div className="flex items-end">
+            <button onClick={handleSaveTemplate} disabled={savingTemplate || !templateName || !subject || !body}
+              className={`px-4 py-2 rounded-lg text-xs font-medium transition-all ${
+                savingTemplate || !templateName || !subject || !body
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}>
+              {savingTemplate ? 'Guardando...' : 'Guardar plantilla'}
+            </button>
+          </div>
+        </div>
 
         <div className="flex gap-4 mb-5">
           <label className="flex items-center gap-2 cursor-pointer">
@@ -204,7 +333,7 @@ export default function CampaignForm({ leadsCount, onSend, selectedIds, filters 
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-gray-700">Historial de Env\u00edos</h3>
+          <h3 className="font-semibold text-gray-700">Historial de Envios</h3>
           <button onClick={fetchHistory} className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
             disabled={loadingHistory}>
             {loadingHistory ? 'Cargando...' : 'Actualizar'}
@@ -227,7 +356,7 @@ export default function CampaignForm({ leadsCount, onSend, selectedIds, filters 
         <div className="max-h-64 overflow-y-auto space-y-1">
           {filteredHistory.length === 0 ? (
             <div className="text-center text-gray-400 py-8 text-sm">
-              {loadingHistory ? 'Cargando...' : 'No hay env\u00edos registrados'}
+              {loadingHistory ? 'Cargando...' : 'No hay envios registrados'}
             </div>
           ) : (
             filteredHistory.map((h: any, i: number) => (
