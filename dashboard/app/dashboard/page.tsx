@@ -166,6 +166,7 @@ export default function DashboardPage() {
   useEffect(() => { fetchData() }, [fetchData])
 
   const handleStatusChange = async (id: number, status: string) => {
+    setLeads(prev => prev.map(l => l.id === id ? { ...l, status } : l))
     await fetch(`/api/leads/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
