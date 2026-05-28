@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { spawn, ChildProcess } from 'child_process'
+import { spawn, ChildProcess, execSync } from 'child_process'
 import path from 'path'
 import fs from 'fs'
 
@@ -133,13 +133,10 @@ export async function PATCH(request: NextRequest) {
   }
 
   const proc = runningProcesses.get(jobId)
-  if (proc) {
+  if (proc && proc.pid) {
     try {
-      proc.kill('SIGTERM')
+      execSync(`taskkill /F /T /PID ${proc.pid}`, { stdio: 'ignore' })
     } catch {}
-    setTimeout(() => {
-      try { proc.kill('SIGKILL') } catch {}
-    }, 3000)
     runningProcesses.delete(jobId)
   }
 

@@ -171,57 +171,17 @@ class Runner:
                      include_instagram: bool = False,
                      parish: Optional[str] = None,
                      sector: Optional[str] = None) -> int:
-        where = sector or parish or city
-        self._write_progress(f"Buscando en {where}...")
-        tasks: List[Tuple[str, Callable]] = []
-
-        def maps_task():
-            self._write_progress(f"Google Maps: buscando {category} en {where}")
-            return self._run_maps(category, state, city, deep, max_deep, parish, sector)
-
-        def google_task():
-            self._write_progress(f"Google Search: buscando {category} en {where}")
-            return self._run_google_search(category, state, city, deep, parish, sector)
-
-        def pa_task():
-            self._write_progress(f"Paginas Amarillas: buscando {category} en {where}")
-            return self._run_paginas_amarillas(category, state, city, parish, sector)
-
-        def social_task():
-            self._write_progress(f"Redes Sociales: buscando {category} en {where}")
-            return self._run_social(category, state, city, parish, sector)
-
-        def tiktok_task():
-            self._write_progress(f"TikTok: buscando {category} en {where}")
-            return self._run_tiktok(category, state, city, parish, sector)
-
-        def instagram_task():
-            self._write_progress(f"Instagram: buscando {category} en {where}")
-            return self._run_instagram(category, state, city, parish, sector)
-
-        tasks.append(("maps", maps_task))
+        total = self._run_maps(category, state, city, deep, max_deep, parish, sector)
         if include_google_search:
-            tasks.append(("google_search", google_task))
+            total += self._run_google_search(category, state, city, deep, parish, sector)
         if include_paginas_amarillas:
-            tasks.append(("paginas_amarillas", pa_task))
+            total += self._run_paginas_amarillas(category, state, city, parish, sector)
         if include_social:
-            tasks.append(("social", social_task))
+            total += self._run_social(category, state, city, parish, sector)
         if include_tiktok:
-            tasks.append(("tiktok", tiktok_task))
+            total += self._run_tiktok(category, state, city, parish, sector)
         if include_instagram:
-            tasks.append(("instagram", instagram_task))
-
-        total = 0
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            future_map = {pool.submit(fn): name for name, fn in tasks}
-            for f in as_completed(future_map):
-                name = future_map[f]
-                try:
-                    result = f.result()
-                    total += result
-                except Exception as e:
-                    print(f"  [!] Error en {name}: {e}")
-        self._write_progress(f"Listo: {total} nuevos leads en {where}")
+            total += self._run_instagram(category, state, city, parish, sector)
         return total
 
     def run_all(self, deep: bool = False, max_deep: int = 5,
@@ -284,63 +244,58 @@ class Runner:
                 print(f"  [~] Buscando: {category} en {loc} ...")
                 start = time.time()
 
-                loc_tasks = []
-
-                def loc_maps():
+                try:
                     leads = MapsSpider(self.settings).search(category, loc, deep=deep, max_deep=max_deep)
-                    s = self.storage.save_many(leads)
-                    print(f"     [maps] {len(leads)} encontrados, {s} nuevos")
-                    return s
-
-                loc_tasks.append(("maps", loc_maps))
+                    saved = self.storage.save_many(leads)
+                    total += saved
+                    print(f"     [maps] {len(leads)} encontrados, {saved} nuevos")
+                except Exception as e:
+                    print(f"  [!] Error en maps: {e}")
 
                 if include_google_search:
-                    def loc_gs():
+                    try:
                         leads = GoogleSearchSpider(self.settings).search(category, loc, deep=deep)
-                        s = self.storage.save_many(leads)
-                        print(f"     [google_search] {len(leads)} encontrados, {s} nuevos")
-                        return s
-                    loc_tasks.append(("google_search", loc_gs))
+                        saved = self.storage.save_many(leads)
+                        total += saved
+                        print(f"     [google_search] {len(leads)} encontrados, {saved} nuevos")
+                    except Exception as e:
+                        print(f"  [!] Error en google_search: {e}")
 
                 if include_paginas_amarillas:
-                    def loc_pa():
+                    try:
                         leads = PaginasAmarillasSpider(self.settings).search(category, loc)
-                        s = self.storage.save_many(leads)
-                        print(f"     [paginas_amarillas] {len(leads)} encontrados, {s} nuevos")
-                        return s
-                    loc_tasks.append(("paginas_amarillas", loc_pa))
+                        saved = self.storage.save_many(leads)
+                        total += saved
+                        print(f"     [paginas_amarillas] {len(leads)} encontrados, {saved} nuevos")
+                    except Exception as e:
+                        print(f"  [!] Error en paginas_amarillas: {e}")
 
                 if include_social:
-                    def loc_social():
+                    try:
                         leads = GoogleSearchSpider(self.settings).search_social(category, loc)
-                        s = self.storage.save_many(leads)
-                        print(f"     [social] {len(leads)} encontrados, {s} nuevos")
-                        return s
-                    loc_tasks.append(("social", loc_social))
+                        saved = self.storage.save_many(leads)
+                        total += saved
+                        print(f"     [social] {len(leads)} encontrados, {saved} nuevos")
+                    except Exception as e:
+                        print(f"  [!] Error en social: {e}")
 
                 if include_tiktok:
-                    def loc_tiktok():
+                    try:
                         leads = TikTokSpider(self.settings).search(category, loc)
-                        s = self.storage.save_many(leads)
-                        print(f"     [tiktok] {len(leads)} encontrados, {s} nuevos")
-                        return s
-                    loc_tasks.append(("tiktok", loc_tiktok))
+                        saved = self.storage.save_many(leads)
+                        total += saved
+                        print(f"     [tiktok] {len(leads)} encontrados, {saved} nuevos")
+                    except Exception as e:
+                        print(f"  [!] Error en tiktok: {e}")
 
                 if include_instagram:
-                    def loc_instagram():
+                    try:
                         leads = InstagramSpider(self.settings).search(category, loc)
-                        s = self.storage.save_many(leads)
-                        print(f"     [instagram] {len(leads)} encontrados, {s} nuevos")
-                        return s
-                    loc_tasks.append(("instagram", loc_instagram))
-
-                with ThreadPoolExecutor(max_workers=2) as pool:
-                    fmap = {pool.submit(fn): name for name, fn in loc_tasks}
-                    for f in as_completed(fmap):
-                        try:
-                            total += f.result()
-                        except Exception as e:
-                            print(f"  [!] Error en {fmap[f]}: {e}")
+                        saved = self.storage.save_many(leads)
+                        total += saved
+                        print(f"     [instagram] {len(leads)} encontrados, {saved} nuevos")
+                    except Exception as e:
+                        print(f"  [!] Error en instagram: {e}")
 
                 elapsed = time.time() - start
                 print(f"     -> Total: {total} nuevos ({elapsed:.0f}s)")
