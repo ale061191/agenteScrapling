@@ -229,6 +229,7 @@ def main():
 
     print_menu()
     while True:
+        try:
             cmd = input("  nova_tech> ").strip()
         except (EOFError, KeyboardInterrupt):
             print(); break

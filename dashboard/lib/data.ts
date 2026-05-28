@@ -62,7 +62,7 @@ function rowToLead(row: any): Lead {
 export async function getAllLeads(filters?: {
   category?: string; status?: string; location?: string; state?: string; city?: string; search?: string
 }): Promise<Lead[]> {
-  let query = db().from('leads').select('*').order('id', { ascending: true })
+  let query = db().from('leads').select('*')
 
   if (filters?.category) query = query.eq('category', filters.category)
   if (filters?.status) query = query.eq('status', filters.status)
