@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect, useRef } from 'react'
+import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { MapContainer, TileLayer, CircleMarker, Tooltip, ZoomControl, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -75,34 +75,37 @@ function MapMarkers({ leads, onSelectLead, visible }: { leads: Lead[], onSelectL
         const r = Math.min(10 + g.accepted * 2.5, 26)
         const firstAccepted = g.leads.find(l => l.status === 'aceptado')
         return (
-          <CircleMarker key={g.state} center={[g.lat, g.lng]} radius={r}
-            pathOptions={{
-              color: '#16a34a',
-              fillColor: firstAccepted ? 'rgba(22,163,74,0.65)' : 'rgba(22,163,74,0.4)',
-              fillOpacity: 0.65, weight: 2,
-            }}
-            eventHandlers={{
-              click: () => { if (firstAccepted) onSelectLead(firstAccepted) },
-            }}>
-            <Tooltip direction="top" offset={[0, -r]} className="rounded-lg shadow-lg border-0">
-              <div className="text-xs leading-relaxed min-w-[120px]">
-                <div className="font-semibold text-gray-800 text-sm border-b pb-1 mb-1">{g.state}</div>
-                <div className="text-green-700">{g.accepted} aceptado{g.accepted !== 1 ? 's' : ''}</div>
-                <div className="text-gray-500">{g.leads.length} total{g.leads.length !== 1 ? 'es' : ''}</div>
-                {firstAccepted && g.accepted > 1 && (
-                  <div className="text-blue-600 mt-1 text-[10px]">Click para ver detalle</div>
-                )}
-              </div>
-            </Tooltip>
+          <React.Fragment key={g.state}>
+            <CircleMarker center={[g.lat, g.lng]} radius={r}
+              pathOptions={{
+                color: '#16a34a',
+                fillColor: firstAccepted ? 'rgba(22,163,74,0.65)' : 'rgba(22,163,74,0.4)',
+                fillOpacity: 0.65, weight: 2,
+              }}
+              eventHandlers={{
+                click: () => { if (firstAccepted) onSelectLead(firstAccepted) },
+              }}>
+              <Tooltip direction="top" offset={[0, -r]} className="rounded-lg shadow-lg border-0">
+                <div className="text-xs leading-relaxed min-w-[120px]">
+                  <div className="font-semibold text-gray-800 text-sm border-b pb-1 mb-1">{g.state}</div>
+                  <div className="text-green-700">{g.accepted} aceptado{g.accepted !== 1 ? 's' : ''}</div>
+                  <div className="text-gray-500">{g.leads.length} total{g.leads.length !== 1 ? 'es' : ''}</div>
+                  {firstAccepted && g.accepted > 1 && (
+                    <div className="text-blue-600 mt-1 text-[10px]">Click para ver detalle</div>
+                  )}
+                </div>
+              </Tooltip>
+            </CircleMarker>
+            
             {g.accepted >= 1 && (
               <CircleMarker center={[g.lat, g.lng]} radius={r - 1}
                 pathOptions={{ color: 'white', fillColor: 'transparent', fillOpacity: 0, weight: 0.8, dashArray: '3 3' }}
-                pane="marker" />
+                pane="markerPane" />
             )}
             {g.accepted > 1 && (
               <CircleMarker center={[g.lat, g.lng]} radius={r}
                 pathOptions={{ color: 'transparent', fillColor: 'transparent', fillOpacity: 0, weight: 0 }}
-                pane="marker">
+                pane="markerPane">
                 <Tooltip permanent direction="center" className="bg-transparent border-0 shadow-none">
                   <span className="text-white font-bold text-xs pointer-events-none select-none"
                     style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>
@@ -111,7 +114,7 @@ function MapMarkers({ leads, onSelectLead, visible }: { leads: Lead[], onSelectL
                 </Tooltip>
               </CircleMarker>
             )}
-          </CircleMarker>
+          </React.Fragment>
         )
       })}
     </>
@@ -119,25 +122,7 @@ function MapMarkers({ leads, onSelectLead, visible }: { leads: Lead[], onSelectL
 }
 
 export default function VenezuelaMap({ leads, onSelectLead, active }: Props) {
-  const [hasMounted, setHasMounted] = useState(false)
-  const [frozenLeads, setFrozenLeads] = useState<Lead[]>([])
-
-  // Only update the map's leads when the tab is active to prevent Leaflet SVG crashes 
-  // when trying to add/remove layers on a display:none container.
-  useEffect(() => {
-    if (active) {
-      setHasMounted(true)
-      setFrozenLeads(leads)
-    }
-  }, [active, leads])
-
-  const totalAccepted = useMemo(() => frozenLeads.filter(l => l.status === 'aceptado').length, [frozenLeads])
-
-  if (!hasMounted) return (
-    <div className="relative rounded-xl border border-gray-200 shadow-sm bg-gray-50 flex items-center justify-center text-gray-400" style={{ height: '400px' }}>
-      Cargando mapa...
-    </div>
-  )
+  const totalAccepted = useMemo(() => leads.filter(l => l.status === 'aceptado').length, [leads])
 
   return (
     <div className="relative rounded-xl overflow-hidden border border-gray-200 shadow-sm"
@@ -151,7 +136,7 @@ export default function VenezuelaMap({ leads, onSelectLead, active }: Props) {
           attribution='&copy; <a href="https://carto.com/">CARTO</a>'
           url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
         <MapUpdater active={active} />
-        <MapMarkers leads={frozenLeads} onSelectLead={onSelectLead} visible={active} />
+        <MapMarkers leads={leads} onSelectLead={onSelectLead} visible={active} />
       </MapContainer>
 
       <div className="absolute bottom-3 left-3 z-[1000] bg-white/90 backdrop-blur rounded-lg shadow-sm border border-gray-200 px-3 py-2 text-xs">
