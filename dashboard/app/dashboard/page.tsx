@@ -402,7 +402,8 @@ export default function DashboardPage() {
 
         <div className="px-6 py-6 space-y-6">
           {/* Section: Dashboard */}
-          <div className={`space-y-6 section-enter ${activeSection !== 'dashboard' ? 'hidden' : ''}`}>
+          {activeSection === 'dashboard' && (
+            <div className="space-y-6 section-enter" key="dashboard">
               <div className="flex flex-wrap gap-3 items-center bg-white rounded-xl shadow-sm border border-gray-100 p-4">
                 <input value={search} onChange={e => setSearch(e.target.value)}
                   placeholder="Buscar leads..."
@@ -450,19 +451,21 @@ export default function DashboardPage() {
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mt-6">
                 <h3 className="font-semibold text-gray-700 mb-1">Mapa de Leads Aceptados</h3>
                 <p className="text-xs text-gray-400 mb-4">Distribucion geografica por estado</p>
-                {activeSection === 'dashboard' && (
-                  <VenezuelaMap leads={leads} onSelectLead={setSelectedLead} active={true} />
-                )}
+                <VenezuelaMap leads={leads} onSelectLead={setSelectedLead} active={true} />
               </div>
             </div>
+          )}
 
           {/* Section: Pipeline */}
-          <div className={activeSection !== 'pipeline' ? 'hidden' : ''}>
-            <PipelineBoard leads={leads} onStatusChange={handleStatusChange} />
-          </div>
+          {activeSection === 'pipeline' && (
+            <div key="pipeline" className="section-enter">
+              <PipelineBoard leads={leads} onStatusChange={handleStatusChange} />
+            </div>
+          )}
 
           {/* Section: Todos los Leads */}
-          <div className={`space-y-4 section-enter ${activeSection !== 'leads' ? 'hidden' : ''}`}>
+          {activeSection === 'leads' && (
+            <div className="space-y-4 section-enter" key="leads">
               <div className="flex flex-wrap gap-3 items-center bg-white rounded-xl shadow-sm border border-gray-100 p-4">
                 <input value={search} onChange={e => setSearch(e.target.value)}
                   placeholder="Buscar leads..."
@@ -513,9 +516,11 @@ export default function DashboardPage() {
                 onToggleSelectAll={() => setSelectedIds(prev => prev.length === leads.length ? [] : leads.map(l => l.id!))}
                 onStatusChange={handleStatusChange} onSelectLead={setSelectedLead} onDeleteLead={handleDeleteLead} />
             </div>
+          )}
 
           {/* Section: Buscar Nuevos Leads */}
-          <div className={`section-enter ${activeSection !== 'search' ? 'hidden' : ''}`}>
+          {activeSection === 'search' && (
+            <div className="section-enter" key="search">
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                 <h3 className="font-semibold text-gray-700 mb-1">Nueva Busqueda</h3>
                 <p className="text-xs text-gray-400 mb-5">Configura los parametros y ejecuta una busqueda en Google Maps</p>
@@ -741,9 +746,11 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
+          )}
 
           {/* Section: Campañas de Correo */}
-          <div className={`section-enter ${activeSection !== 'campaigns' ? 'hidden' : ''}`}>
+          {activeSection === 'campaigns' && (
+            <div className="section-enter" key="campaigns">
               <CampaignForm leadsCount={leads.length} selectedIds={selectedIds}
                 filters={{ category: filterCategory, status: filterStatus, state: filterState, city: filterCity }}
                 onSend={async (opts) => {
@@ -755,6 +762,7 @@ export default function DashboardPage() {
                   return res.json()
                 }} />
             </div>
+          )}
         </div>
       </main>
 
