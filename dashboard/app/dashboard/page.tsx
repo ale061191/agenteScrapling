@@ -286,12 +286,11 @@ export default function DashboardPage() {
     if (!searchJobId) return
     try {
       await fetch('/api/search', {
-        method: 'PATCH',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobId: searchJobId }),
+        body: JSON.stringify({ action: 'cancel', jobId: searchJobId }),
       })
     } catch {}
-    setSearchResult('Cancelando...')
     if (pollRef.current) clearInterval(pollRef.current)
     setSearching(false)
     setSearchJobId(null)

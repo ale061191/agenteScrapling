@@ -11,8 +11,6 @@ const JOBS_FILE = path.join(DATA_DIR, 'search_jobs.json')
 const PYTHON_EXE = 'C:\\Users\\Voltaje Plus\\AppData\\Local\\Python\\bin\\python.exe'
 const MAIN_PY = path.join(process.cwd(), '..', 'main.py')
 
-const runningProcesses = new Map<string, ChildProcess>()
-
 interface Job {
   jobId: string
   category: string
@@ -33,6 +31,7 @@ interface Job {
   leadsFound?: number
   output?: string
   progress?: string
+  pid?: number
 }
 
 function readJobs(): Record<string, Job> {
@@ -45,12 +44,39 @@ function writeJobs(jobs: Record<string, Job>) {
   fs.writeFileSync(JOBS_FILE, JSON.stringify(jobs, null, 2), 'utf-8')
 }
 
+function killProcess(pid: number) {
+  try {
+    execSync(`taskkill /F /T /PID ${pid}`, { stdio: 'ignore' })
+  } catch {}
+}
+
 export async function POST(request: NextRequest) {
   if (IS_VERCEL) {
     return NextResponse.json({ error: 'La busqueda de leads solo funciona en modo local (tu PC). El dashboard en la nube solo muestra y gestiona leads existentes.' }, { status: 400 })
   }
 
   const body = await request.json()
+
+  if (body.action === 'cancel') {
+    const { jobId } = body
+    if (!jobId) {
+      return NextResponse.json({ error: 'jobId is required' }, { status: 400 })
+    }
+    const jobs = readJobs()
+    const job = jobs[jobId]
+    if (job) {
+      if (job.status === 'running') {
+        job.status = 'cancelled'
+        job.finished = new Date().toISOString()
+      }
+      if (job.pid) {
+        killProcess(job.pid)
+      }
+      writeJobs(jobs)
+    }
+    return NextResponse.json({ success: true })
+  }
+
   const { category, state, city, parish, sector, deep, googleSearch, paginasAmarillas, social, tiktok, instagram, maxDeep } = body
   if (!category || !state || !city) {
     return NextResponse.json({ error: 'category, state, and city are required' }, { status: 400 })
@@ -84,14 +110,14 @@ export async function POST(request: NextRequest) {
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 
-  runningProcesses.set(jobId, proc)
+  job.pid = proc.pid
+  writeJobs(readJobs())
 
   let output = ''
   proc.stdout.on('data', (data) => { output += data.toString() })
   proc.stderr.on('data', (data) => { output += data.toString() })
 
   proc.on('close', (code) => {
-    runningProcesses.delete(jobId)
     const j = readJobs()
     if (j[jobId]?.status === 'cancelled') {
       writeJobs(j)
@@ -119,34 +145,6 @@ export async function GET(request: NextRequest) {
   }
   const recent = Object.values(jobs).sort((a, b) => b.started.localeCompare(a.started)).slice(0, 20)
   return NextResponse.json({ jobs: recent })
-}
-
-export async function PATCH(request: NextRequest) {
-  if (IS_VERCEL) {
-    return NextResponse.json({ success: true })
-  }
-
-  const body = await request.json()
-  const { jobId } = body
-  if (!jobId) {
-    return NextResponse.json({ error: 'jobId is required' }, { status: 400 })
-  }
-
-  const proc = runningProcesses.get(jobId)
-  if (proc && proc.pid) {
-    try {
-      execSync(`taskkill /F /T /PID ${proc.pid}`, { stdio: 'ignore' })
-    } catch {}
-    runningProcesses.delete(jobId)
-  }
-
-  const jobs = readJobs()
-  if (jobs[jobId] && jobs[jobId].status === 'running') {
-    jobs[jobId] = { ...jobs[jobId], status: 'cancelled', finished: new Date().toISOString() }
-    writeJobs(jobs)
-  }
-
-  return NextResponse.json({ success: true })
 }
 
 export async function DELETE(request: NextRequest) {

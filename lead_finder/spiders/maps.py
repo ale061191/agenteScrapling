@@ -106,7 +106,7 @@ class MapsSpider:
                         if not href:
                             continue
                         try:
-                            page.goto(href, wait_until="networkidle", timeout=30000)
+                            page.goto(href, wait_until="networkidle", timeout=60000)
                             page.wait_for_timeout(1500)
                             if "consent" in page.url.lower():
                                 page.locator("button:has-text('Aceptar todo')").first.click()
@@ -201,7 +201,7 @@ class MapsSpider:
                             item["instagram"] = details.get("instagram") or None
                             item["twitter"] = details.get("twitter") or None
 
-                            page.go_back(wait_until="networkidle", timeout=30000)
+                            page.go_back(wait_until="networkidle", timeout=60000)
                             page.wait_for_timeout(1500)
                             if "consent" in page.url.lower():
                                 page.locator("button:has-text('Aceptar todo')").first.click()
@@ -214,7 +214,7 @@ class MapsSpider:
                 page_action=action,
                 load_dom=True,
                 network_idle=True,
-                timeout=180000,
+                timeout=600000,
             )
 
         leads = []
