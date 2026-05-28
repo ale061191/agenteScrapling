@@ -25,6 +25,7 @@ interface Job {
   paginasAmarillas: boolean
   social: boolean
   tiktok: boolean
+  instagram: boolean
   maxDeep?: number
   status: 'running' | 'done' | 'error' | 'cancelled'
   started: string
@@ -50,13 +51,13 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json()
-  const { category, state, city, parish, sector, deep, googleSearch, paginasAmarillas, social, tiktok, maxDeep } = body
+  const { category, state, city, parish, sector, deep, googleSearch, paginasAmarillas, social, tiktok, instagram, maxDeep } = body
   if (!category || !state || !city) {
     return NextResponse.json({ error: 'category, state, and city are required' }, { status: 400 })
   }
 
   const jobId = `search_${Date.now()}`
-  const job: Job = { jobId, category, state, city, parish, sector, deep: !!deep, googleSearch: !!googleSearch, paginasAmarillas: !!paginasAmarillas, social: !!social, tiktok: !!tiktok, status: 'running', started: new Date().toISOString() }
+  const job: Job = { jobId, category, state, city, parish, sector, deep: !!deep, googleSearch: !!googleSearch, paginasAmarillas: !!paginasAmarillas, social: !!social, tiktok: !!tiktok, instagram: !!instagram, status: 'running', started: new Date().toISOString() }
 
   const jobs = readJobs()
   jobs[jobId] = job
@@ -69,6 +70,7 @@ export async function POST(request: NextRequest) {
     ...(paginasAmarillas ? ['--pa'] : []),
     ...(social ? ['--social'] : []),
     ...(tiktok ? ['--tiktok'] : []),
+    ...(instagram ? ['--instagram'] : []),
     ...(maxDeep && maxDeep > 0 ? ['--max-deep', String(maxDeep)] : []),
   ]
   const args = ['run', ...flags, category, state, cityArg]

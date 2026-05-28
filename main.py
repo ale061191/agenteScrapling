@@ -21,6 +21,7 @@ def print_menu():
     print("    run --pa   [categoria] [estado] [ciudad] + Paginas Amarillas VE (telefonos)")
     print("    run --social [categoria] [estado] [ciudad] + Redes Sociales (Facebook/Instagram)")
     print("    run --tiktok [categoria] [estado] [ciudad] + TikTok (perfiles)")
+    print("    run --instagram [categoria] [estado] [ciudad] + Instagram (perfiles)")
     print("    export                                  Exportar a CSV/JSON")
     print("    delete --all                            Eliminar todos los leads")
     print("    delete --ids 1,2,3                      Eliminar leads por IDs")
@@ -66,6 +67,7 @@ def main():
         pa = "--pa" in args
         social = "--social" in args
         tiktok = "--tiktok" in args
+        instagram = "--instagram" in args
         max_deep = None
         if "--max-deep" in args:
             idx = args.index("--max-deep")
@@ -73,7 +75,7 @@ def main():
                 max_deep = int(args[idx + 1])
             except (ValueError, IndexError):
                 pass
-        args = [a for a in args if a not in ("--deep", "--gs", "--pa", "--social", "--tiktok")]
+        args = [a for a in args if a not in ("--deep", "--gs", "--pa", "--social", "--tiktok", "--instagram")]
         args = [a for i, a in enumerate(args) if not (a == "--max-deep" or (i > 0 and args[i-1] == "--max-deep"))]
         cmd = args[0].lower() if args else "help"
         if cmd == "run":
@@ -83,7 +85,7 @@ def main():
             city = city.replace("_", " ") if city else None
             parish = parish.replace("_", " ") if parish else None
             sector = sector.replace("_", " ") if sector else None
-            kw = dict(deep=deep, include_google_search=gs, include_paginas_amarillas=pa, include_social=social, include_tiktok=tiktok)
+            kw = dict(deep=deep, include_google_search=gs, include_paginas_amarillas=pa, include_social=social, include_tiktok=tiktok, include_instagram=instagram)
             if max_deep is not None:
                 kw['max_deep'] = max_deep
             if cat and state and city:
@@ -238,6 +240,7 @@ def main():
         pa = "--pa" in args
         social = "--social" in args
         tiktok = "--tiktok" in args
+        instagram = "--instagram" in args
         max_deep = None
         if "--max-deep" in args:
             idx = args.index("--max-deep")
@@ -245,7 +248,7 @@ def main():
                 max_deep = int(args[idx + 1])
             except (ValueError, IndexError):
                 pass
-        args = [a for a in args if a not in ("--deep", "--gs", "--pa", "--social", "--tiktok")]
+        args = [a for a in args if a not in ("--deep", "--gs", "--pa", "--social", "--tiktok", "--instagram")]
         args = [a for i, a in enumerate(args) if not (a == "--max-deep" or (i > 0 and args[i-1] == "--max-deep"))]
         c = args[0].lower() if args else ""
         if c == "run":
@@ -255,7 +258,7 @@ def main():
             city = city.replace("_", " ") if city else None
             parish = parish.replace("_", " ") if parish else None
             sector = sector.replace("_", " ") if sector else None
-            kw = dict(deep=deep, include_google_search=gs, include_paginas_amarillas=pa, include_social=social, include_tiktok=tiktok)
+            kw = dict(deep=deep, include_google_search=gs, include_paginas_amarillas=pa, include_social=social, include_tiktok=tiktok, include_instagram=instagram)
             if max_deep is not None:
                 kw['max_deep'] = max_deep
             if cat and state and city:

@@ -10,6 +10,7 @@ from lead_finder.spiders.maps import MapsSpider
 from lead_finder.spiders.google_search import GoogleSearchSpider
 from lead_finder.spiders.paginas_amarillas import PaginasAmarillasSpider
 from lead_finder.spiders.tiktok import TikTokSpider
+from lead_finder.spiders.instagram import InstagramSpider
 
 
 def _loc_string(state: str, city: str) -> str:
@@ -142,12 +143,32 @@ class Runner:
         print(f"     -> {len(leads)} encontrados, {saved} nuevos ({elapsed:.0f}s)")
         return saved
 
+    def _run_instagram(self, category: str, state: str, city: str,
+                       parish: Optional[str] = None,
+                       sector: Optional[str] = None) -> int:
+        loc = _build_loc(city, state, parish, sector)
+        where = sector or parish or city
+        print(f"  [~] [instagram] {category} en {where}, {state} ...")
+        start = time.time()
+        try:
+            leads = InstagramSpider(self.settings).search(category, loc,
+                                                          state=state, city=city,
+                                                          parish=parish, sector=sector)
+        except Exception as e:
+            print(f"  [!] Error en {category}/{state}/{city}: {e}")
+            return 0
+        saved = self.storage.save_many(leads)
+        elapsed = time.time() - start
+        print(f"     -> {len(leads)} encontrados, {saved} nuevos ({elapsed:.0f}s)")
+        return saved
+
     def _run_sources(self, category: str, state: str, city: str,
                      deep: bool, max_deep: int,
                      include_google_search: bool,
                      include_paginas_amarillas: bool,
                      include_social: bool,
                      include_tiktok: bool = False,
+                     include_instagram: bool = False,
                      parish: Optional[str] = None,
                      sector: Optional[str] = None) -> int:
         where = sector or parish or city
@@ -174,6 +195,10 @@ class Runner:
             self._write_progress(f"TikTok: buscando {category} en {where}")
             return self._run_tiktok(category, state, city, parish, sector)
 
+        def instagram_task():
+            self._write_progress(f"Instagram: buscando {category} en {where}")
+            return self._run_instagram(category, state, city, parish, sector)
+
         tasks.append(("maps", maps_task))
         if include_google_search:
             tasks.append(("google_search", google_task))
@@ -183,6 +208,8 @@ class Runner:
             tasks.append(("social", social_task))
         if include_tiktok:
             tasks.append(("tiktok", tiktok_task))
+        if include_instagram:
+            tasks.append(("instagram", instagram_task))
 
         total = 0
         with ThreadPoolExecutor(max_workers=2) as pool:
@@ -201,7 +228,8 @@ class Runner:
                 include_google_search: bool = False,
                 include_paginas_amarillas: bool = False,
                 include_social: bool = False,
-                include_tiktok: bool = False) -> int:
+                include_tiktok: bool = False,
+                include_instagram: bool = False) -> int:
         total = 0
         print(f"\n{'='*60}")
         print(f"  LEAD FINDER - Venezuela (todo el pais)")
@@ -215,7 +243,8 @@ class Runner:
                                            include_google_search,
                                            include_paginas_amarillas,
                                            include_social,
-                                           include_tiktok=include_tiktok)
+                                           include_tiktok=include_tiktok,
+                                           include_instagram=include_instagram)
 
         print(f"\n{'='*60}")
         print(f"  [+] Total leads nuevos: {total}")
@@ -232,7 +261,8 @@ class Runner:
                      include_google_search: bool = False,
                      include_paginas_amarillas: bool = False,
                      include_social: bool = False,
-                     include_tiktok: bool = False) -> int:
+                     include_tiktok: bool = False,
+                     include_instagram: bool = False) -> int:
         total = 0
 
         def _run_sources_for(s, c):
@@ -241,6 +271,7 @@ class Runner:
                                      include_paginas_amarillas,
                                      include_social,
                                      include_tiktok=include_tiktok,
+                                     include_instagram=include_instagram,
                                      parish=parish, sector=sector)
 
         if state and city:
@@ -294,6 +325,14 @@ class Runner:
                         print(f"     [tiktok] {len(leads)} encontrados, {s} nuevos")
                         return s
                     loc_tasks.append(("tiktok", loc_tiktok))
+
+                if include_instagram:
+                    def loc_instagram():
+                        leads = InstagramSpider(self.settings).search(category, loc)
+                        s = self.storage.save_many(leads)
+                        print(f"     [instagram] {len(leads)} encontrados, {s} nuevos")
+                        return s
+                    loc_tasks.append(("instagram", loc_instagram))
 
                 with ThreadPoolExecutor(max_workers=2) as pool:
                     fmap = {pool.submit(fn): name for name, fn in loc_tasks}

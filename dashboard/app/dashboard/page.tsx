@@ -97,6 +97,7 @@ export default function DashboardPage() {
   const [sPaginasAmarillas, setSPaginasAmarillas] = useState(false)
   const [sSocial, setSSocial] = useState(false)
   const [sTikTok, setSTikTok] = useState(false)
+  const [sInstagram, setSInstagram] = useState(false)
   const [searching, setSearching] = useState(false)
   const [searchJobId, setSearchJobId] = useState<string | null>(null)
   const [searchResult, setSearchResult] = useState<string | null>(null)
@@ -239,6 +240,7 @@ export default function DashboardPage() {
           paginasAmarillas: sPaginasAmarillas,
           social: sSocial,
           tiktok: sTikTok,
+          instagram: sInstagram,
         }),
       })
       const data = await res.json()
@@ -605,6 +607,18 @@ export default function DashboardPage() {
                       <div className="min-w-0">
                         <div className="text-sm text-gray-600 leading-tight">TikTok</div>
                         <div className="text-[9px] text-gray-400 leading-tight">perfiles bio/seguidores</div>
+                      </div>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                      <div className="relative shrink-0">
+                        <input type="checkbox" checked={sInstagram} onChange={e => setSInstagram(e.target.checked)}
+                          className="sr-only peer" />
+                        <div className="w-9 h-5 bg-gray-200 rounded-full peer-checked:bg-gradient-to-r peer-checked:from-purple-500 peer-checked:to-pink-500 transition-colors duration-200"></div>
+                        <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform duration-200"></div>
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-sm text-gray-600 leading-tight">Instagram</div>
+                        <div className="text-[9px] text-gray-400 leading-tight">perfiles bio/telefono</div>
                       </div>
                     </label>
                   </div>
