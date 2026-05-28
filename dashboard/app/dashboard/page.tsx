@@ -139,7 +139,7 @@ export default function DashboardPage() {
 
   const fetchTrendData = useCallback(async () => {
     try {
-      const res = await fetch('/api/stats/trends')
+      const res = await fetch(`/api/stats/trends?t=${Date.now()}`, { cache: 'no-store' })
       setTrendData(await res.json())
     } catch {}
   }, [])
@@ -151,11 +151,12 @@ export default function DashboardPage() {
     if (filterStatus) params.set('status', filterStatus)
     if (filterState) params.set('state', filterState)
     if (filterCity) params.set('city', filterCity)
+    params.set('t', Date.now().toString()) // break cache
 
     const [leadsRes, statsRes, historyRes] = await Promise.all([
-      fetch(`/api/leads?${params}`).then(r => r.json()),
-      fetch('/api/stats').then(r => r.json()),
-      fetch('/api/search').then(r => r.json()),
+      fetch(`/api/leads?${params}`, { cache: 'no-store' }).then(r => r.json()),
+      fetch(`/api/stats?t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json()),
+      fetch(`/api/search?t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json()),
     ])
     setLeads(leadsRes.leads)
     setStats(statsRes)
@@ -184,12 +185,17 @@ export default function DashboardPage() {
       } : prev)
     }
     try {
-      await fetch(`/api/leads/${id}`, {
+      const res = await fetch(`/api/leads/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
       })
-    } catch {}
+      if (!res.ok) {
+        console.error('Error al actualizar status:', await res.text())
+      }
+    } catch (err) {
+      console.error('Error de red al actualizar status:', err)
+    }
   }
 
   const handleSaveLead = async (id: number, data: { status?: string; notes?: string }) => {
