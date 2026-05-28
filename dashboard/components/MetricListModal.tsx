@@ -36,7 +36,7 @@ export default function MetricListModal({ title, leads, open, onClose, onSelectL
   const gradient = CARD_GRADIENTS[filterKey] || 'from-blue-600 to-blue-400'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl mx-4 max-h-[85vh] flex flex-col"
         onClick={e => e.stopPropagation()}>
         <div className={`bg-gradient-to-r ${gradient} px-6 py-4 rounded-t-2xl flex justify-between items-center`}>

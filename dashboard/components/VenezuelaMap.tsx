@@ -16,7 +16,7 @@ interface Lead {
 
 interface Props {
   leads: Lead[]
-  onSelectLead: (lead: Lead) => void
+  onSelectState?: (state: string) => void
   active: boolean
 }
 
@@ -52,7 +52,7 @@ function MapUpdater({ active }: { active: boolean }) {
   return null
 }
 
-function MapMarkers({ leads, onSelectLead, visible }: { leads: Lead[], onSelectLead: (l: Lead) => void, visible: boolean }) {
+function MapMarkers({ leads, onSelectState, visible }: { leads: Lead[], onSelectState?: (state: string) => void, visible: boolean }) {
   const stateGroups: StateGroup[] = useMemo(() => {
     const groups: Record<string, StateGroup> = {}
     leads.forEach(lead => {
@@ -83,7 +83,7 @@ function MapMarkers({ leads, onSelectLead, visible }: { leads: Lead[], onSelectL
                 fillOpacity: 0.65, weight: 2,
               }}
               eventHandlers={{
-                click: () => { if (firstAccepted) onSelectLead(firstAccepted) },
+                click: () => { if (onSelectState) onSelectState(g.state) },
               }}>
               <Tooltip direction="top" offset={[0, -r]} className="rounded-lg shadow-lg border-0">
                 <div className="text-xs leading-relaxed min-w-[120px]">
@@ -121,7 +121,7 @@ function MapMarkers({ leads, onSelectLead, visible }: { leads: Lead[], onSelectL
   )
 }
 
-export default function VenezuelaMap({ leads, onSelectLead, active }: Props) {
+export default function VenezuelaMap({ leads, onSelectState, active }: Props) {
   const totalAccepted = useMemo(() => leads.filter(l => l.status === 'aceptado').length, [leads])
 
   return (
@@ -136,7 +136,7 @@ export default function VenezuelaMap({ leads, onSelectLead, active }: Props) {
           attribution='&copy; <a href="https://carto.com/">CARTO</a>'
           url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
         <MapUpdater active={active} />
-        <MapMarkers leads={leads} onSelectLead={onSelectLead} visible={active} />
+        <MapMarkers leads={leads} onSelectState={onSelectState} visible={active} />
       </MapContainer>
 
       <div className="absolute bottom-3 left-3 z-[1000] bg-white/90 backdrop-blur rounded-lg shadow-sm border border-gray-200 px-3 py-2 text-xs">

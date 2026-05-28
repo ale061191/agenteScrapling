@@ -86,6 +86,7 @@ export default function DashboardPage() {
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [deleting, setDeleting] = useState(false)
   const [metricFilter, setMetricFilter] = useState<string | null>(null)
+  const [mapStateFilter, setMapStateFilter] = useState<string | null>(null)
 
   const [sCategory, setSCategory] = useState('restaurantes')
   const [sState, setSState] = useState('')
@@ -451,7 +452,7 @@ export default function DashboardPage() {
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mt-6">
                 <h3 className="font-semibold text-gray-700 mb-1">Mapa de Leads Aceptados</h3>
                 <p className="text-xs text-gray-400 mb-4">Distribucion geografica por estado</p>
-                <VenezuelaMap leads={leads} onSelectLead={setSelectedLead} active={true} />
+                <VenezuelaMap leads={leads} onSelectState={setMapStateFilter} active={true} />
               </div>
             </div>
           )}
@@ -770,6 +771,15 @@ export default function DashboardPage() {
         onClose={() => setSelectedLead(null)} onSave={handleSaveLead} />
 
       {(() => {
+        if (mapStateFilter) {
+          const stateLeads = leads.filter(l => (l.state === mapStateFilter || l.location === mapStateFilter) && l.status === 'aceptado')
+          return (
+            <MetricListModal title={`Leads en ${mapStateFilter}`} leads={stateLeads}
+              open={true} onClose={() => setMapStateFilter(null)}
+              onSelectLead={setSelectedLead} onStatusChange={handleStatusChange} />
+          )
+        }
+
         const metricLabels: Record<string, string> = { total: 'Total Leads', phone: 'Con Telefono', website: 'Con Website', rating: 'Rating Promedio' }
         const metricLeadFilters: Record<string, (l: Lead) => boolean> = {
           total: () => true,
@@ -778,10 +788,11 @@ export default function DashboardPage() {
           rating: (l) => l.rating != null,
         }
         const f = metricFilter
-        const filtered = f ? leads.filter(metricLeadFilters[f] || (() => false)) : []
+        if (!f) return null
+        const filtered = leads.filter(metricLeadFilters[f] || (() => false))
         return (
-          <MetricListModal title={metricLabels[f || ''] || ''} leads={filtered}
-            open={!!f} onClose={() => setMetricFilter(null)}
+          <MetricListModal title={metricLabels[f] || ''} leads={filtered}
+            open={true} onClose={() => setMetricFilter(null)}
             onSelectLead={setSelectedLead} onStatusChange={handleStatusChange} />
         )
       })()}
