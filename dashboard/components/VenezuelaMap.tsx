@@ -120,11 +120,18 @@ function MapMarkers({ leads, onSelectLead, visible }: { leads: Lead[], onSelectL
 
 export default function VenezuelaMap({ leads, onSelectLead, active }: Props) {
   const [hasMounted, setHasMounted] = useState(false)
-  const totalAccepted = useMemo(() => leads.filter(l => l.status === 'aceptado').length, [leads])
+  const [frozenLeads, setFrozenLeads] = useState<Lead[]>([])
 
+  // Only update the map's leads when the tab is active to prevent Leaflet SVG crashes 
+  // when trying to add/remove layers on a display:none container.
   useEffect(() => {
-    if (active) setHasMounted(true)
-  }, [active])
+    if (active) {
+      setHasMounted(true)
+      setFrozenLeads(leads)
+    }
+  }, [active, leads])
+
+  const totalAccepted = useMemo(() => frozenLeads.filter(l => l.status === 'aceptado').length, [frozenLeads])
 
   if (!hasMounted) return (
     <div className="relative rounded-xl border border-gray-200 shadow-sm bg-gray-50 flex items-center justify-center text-gray-400" style={{ height: '400px' }}>
@@ -144,7 +151,7 @@ export default function VenezuelaMap({ leads, onSelectLead, active }: Props) {
           attribution='&copy; <a href="https://carto.com/">CARTO</a>'
           url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
         <MapUpdater active={active} />
-        <MapMarkers leads={leads} onSelectLead={onSelectLead} visible={active} />
+        <MapMarkers leads={frozenLeads} onSelectLead={onSelectLead} visible={active} />
       </MapContainer>
 
       <div className="absolute bottom-3 left-3 z-[1000] bg-white/90 backdrop-blur rounded-lg shadow-sm border border-gray-200 px-3 py-2 text-xs">
