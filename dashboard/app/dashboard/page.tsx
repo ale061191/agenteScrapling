@@ -258,6 +258,8 @@ export default function DashboardPage() {
           setSearching(false)
           setSearchJobId(null)
           if (pollRef.current) clearInterval(pollRef.current)
+        } else if (data.job?.progress) {
+          setSearchResult(`Buscando... ${data.job.progress}`)
         }
       } catch {}
     }, 3000)
@@ -599,7 +601,15 @@ export default function DashboardPage() {
                     searchResult.includes('Error') ? 'bg-red-50 text-red-700 border border-red-200' :
                     'bg-blue-50 text-blue-700 border border-blue-200'
                   }`}>
-                    {searchResult}
+                    <div className="flex items-center gap-2">
+                      {searching && <div className="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin shrink-0" />}
+                      <span>{searchResult}</span>
+                    </div>
+                    {searching && (
+                      <div className="mt-2 w-full bg-blue-200 rounded-full h-1.5 overflow-hidden">
+                        <div className="h-full bg-blue-600 rounded-full animate-pulse" style={{width: '60%'}} />
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

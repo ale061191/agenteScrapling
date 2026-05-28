@@ -1,4 +1,5 @@
 from typing import List, Dict, Any, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from lead_finder.models import Lead
 from lead_finder.config import Settings
 import re
@@ -9,14 +10,14 @@ class TikTokSpider:
         self.settings = settings
 
     def _handle_consent(self, page):
-        page.wait_for_timeout(2000)
+        page.wait_for_timeout(1000)
         if "consent" in page.url.lower():
             try:
                 page.locator("button:has-text('Aceptar todo')").first.click()
-                page.wait_for_timeout(3000)
+                page.wait_for_timeout(1500)
             except:
                 pass
-        page.wait_for_timeout(2000)
+        page.wait_for_timeout(1000)
 
     def _find_tiktok_urls_on_google(self, page) -> List[Dict[str, Any]]:
         return page.evaluate("""() => {
@@ -96,54 +97,51 @@ class TikTokSpider:
             for query in [base_q, f"site:tiktok.com/@ {category} {parts[0]}"]:
                 url = f"https://www.google.com/search?q={query.replace(' ', '+')}&hl=es&gl=ve"
                 try:
-                    session.fetch(url, page_action=find_action, load_dom=True, network_idle=True, timeout=60000)
+                    session.fetch(url, page_action=find_action, load_dom=True, network_idle=True, timeout=30000)
                 except Exception:
                     pass
                 if profiles:
                     break
 
+            unique_profiles = []
             for pf in profiles:
+                url = pf.get("url", "")
+                if url and url not in seen_profiles:
+                    seen_profiles.add(url)
+                    unique_profiles.append(pf)
+
+            def visit_profile(pf) -> Optional[Lead]:
                 profile_url = pf.get("url", "")
                 handle = pf.get("handle", "")
                 name = pf.get("name", "")
                 desc = pf.get("description", "")
 
-                if not profile_url or profile_url in seen_profiles:
-                    continue
-                seen_profiles.add(profile_url)
-
-                bio = ""
-                followers = ""
-                website = ""
-                phone = ""
-                email = ""
-
-                data_list: list = []
-
+                bio = followers = website = phone = email = ""
                 try:
-                    def visit_action(page):
-                        page.wait_for_timeout(3000)
-                        data_list.append(self._extract_profile_data(page))
+                    with StealthySession(headless=self.settings.headless, locale="es-ES") as vs:
+                        data_list: list = []
+                        def va(p):
+                            p.wait_for_timeout(1500)
+                            data_list.append(self._extract_profile_data(p))
+                        vs.fetch(profile_url, page_action=va, load_dom=True, network_idle=True, timeout=30000)
 
-                    session.fetch(profile_url, page_action=visit_action, load_dom=True, network_idle=True, timeout=60000)
+                    if data_list:
+                        pd = data_list[0]
+                        bio = pd.get("bio", "")
+                        followers = pd.get("followers", "")
+                        website = pd.get("website", "")
+                        phone = pd.get("phone", "")
+                        email = pd.get("email", "")
+                    elif desc:
+                        bio = desc[:200]
                 except Exception:
-                    pass
-
-                if data_list:
-                    pd = data_list[0]
-                    bio = pd.get("bio", "")
-                    followers = pd.get("followers", "")
-                    website = pd.get("website", "")
-                    phone = pd.get("phone", "")
-                    email = pd.get("email", "")
-                elif desc:
-                    bio = desc[:200]
+                    if desc:
+                        bio = desc[:200]
 
                 if not website and bio:
                     m = re.search(r'(https?://[^\s]+)', bio)
                     if m:
                         website = m.group(1)
-
                 if not name:
                     name = handle or ""
 
@@ -155,20 +153,23 @@ class TikTokSpider:
                 if followers:
                     notes_parts.append(f"Seguidores: {followers}")
 
-                lead = Lead(
-                    name=name,
-                    category=category,
-                    location=location,
-                    state=state or None,
-                    city=city or None,
-                    website=website or None,
-                    phone=phone or None,
-                    email=email or None,
-                    twitter=profile_url,
-                    source="tiktok",
-                    source_url=google_url,
+                return Lead(
+                    name=name, category=category, location=location,
+                    state=state or None, city=city or None,
+                    website=website or None, phone=phone or None,
+                    email=email or None, twitter=profile_url,
+                    source="tiktok", source_url=google_url,
                     notes=" | ".join(notes_parts) if notes_parts else "",
                 )
-                leads.append(lead)
+
+            with ThreadPoolExecutor(max_workers=3) as pool:
+                futures = [pool.submit(visit_profile, pf) for pf in unique_profiles]
+                for f in as_completed(futures):
+                    try:
+                        lead = f.result()
+                        if lead:
+                            leads.append(lead)
+                    except Exception:
+                        pass
 
         return leads

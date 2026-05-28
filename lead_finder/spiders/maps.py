@@ -27,12 +27,12 @@ class MapsSpider:
             locale="es-ES",
         ) as session:
             def action(page):
-                page.wait_for_timeout(2000)
+                page.wait_for_timeout(1000)
                 if "consent" in page.url.lower():
                     page.locator("button:has-text('Aceptar todo')").first.click()
-                    page.wait_for_timeout(3000)
+                    page.wait_for_timeout(1500)
                     try:
-                        page.wait_for_load_state("networkidle", timeout=10000)
+                        page.wait_for_load_state("networkidle", timeout=5000)
                     except:
                         pass
 
@@ -43,7 +43,7 @@ class MapsSpider:
                     }""")
                     page.wait_for_timeout(self.settings.scroll_delay_ms)
 
-                page.wait_for_timeout(1000)
+                page.wait_for_timeout(400)
 
                 raw = page.evaluate("""() => {
                     const feed = document.querySelector('[role="feed"]');
@@ -101,16 +101,16 @@ class MapsSpider:
                 captured.extend(raw)
 
                 if deep:
-                    for item in captured[:max_deep]:
+                    for idx, item in enumerate(captured[:max_deep]):
                         href = item.get("href", "")
                         if not href:
                             continue
                         try:
-                            page.goto(href, wait_until="networkidle")
-                            page.wait_for_timeout(2500)
+                            page.goto(href, wait_until="load")
+                            page.wait_for_timeout(1000)
                             if "consent" in page.url.lower():
                                 page.locator("button:has-text('Aceptar todo')").first.click()
-                                page.wait_for_timeout(2000)
+                                page.wait_for_timeout(1000)
 
                             try:
                                 page.locator("button[data-tooltip*='fono'], button:has([data-tooltip*='phone'])").first.click(timeout=2000)
@@ -201,11 +201,11 @@ class MapsSpider:
                             item["instagram"] = details.get("instagram") or None
                             item["twitter"] = details.get("twitter") or None
 
-                            page.go_back(wait_until="networkidle")
-                            page.wait_for_timeout(3000)
+                            page.go_back(wait_until="load")
+                            page.wait_for_timeout(1000)
                             if "consent" in page.url.lower():
                                 page.locator("button:has-text('Aceptar todo')").first.click()
-                                page.wait_for_timeout(2000)
+                                page.wait_for_timeout(1000)
                         except Exception:
                             continue
 
@@ -214,7 +214,7 @@ class MapsSpider:
                 page_action=action,
                 load_dom=True,
                 network_idle=True,
-                timeout=600000,
+                timeout=180000,
             )
 
         leads = []

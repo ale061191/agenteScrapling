@@ -23,11 +23,13 @@ interface Job {
   paginasAmarillas: boolean
   social: boolean
   tiktok: boolean
+  maxDeep?: number
   status: 'running' | 'done' | 'error'
   started: string
   finished?: string
   leadsFound?: number
   output?: string
+  progress?: string
 }
 
 function readJobs(): Record<string, Job> {
@@ -46,7 +48,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json()
-  const { category, state, city, parish, sector, deep, googleSearch, paginasAmarillas, social, tiktok } = body
+  const { category, state, city, parish, sector, deep, googleSearch, paginasAmarillas, social, tiktok, maxDeep } = body
   if (!category || !state || !city) {
     return NextResponse.json({ error: 'category, state, and city are required' }, { status: 400 })
   }
@@ -65,6 +67,7 @@ export async function POST(request: NextRequest) {
     ...(paginasAmarillas ? ['--pa'] : []),
     ...(social ? ['--social'] : []),
     ...(tiktok ? ['--tiktok'] : []),
+    ...(maxDeep && maxDeep > 0 ? ['--max-deep', String(maxDeep)] : []),
   ]
   const args = ['run', ...flags, category, state, cityArg]
 

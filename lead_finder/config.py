@@ -156,8 +156,8 @@ def get_flat_locations() -> List[str]:
 class Settings:
     categories: List[str] = field(default_factory=lambda: BUSINESS_CATEGORIES)
     locations: List[str] = field(default_factory=lambda: get_flat_locations())
-    scroll_times: int = 20
-    scroll_delay_ms: int = 600
+    scroll_times: int = 5
+    scroll_delay_ms: int = 300
     max_results_per_search: int = 0
     headless: bool = True
     country: str = "Venezuela"

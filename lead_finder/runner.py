@@ -1,6 +1,8 @@
 import os
 import time
-from typing import List, Optional, Tuple
+import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import List, Optional, Tuple, Callable, Dict
 from lead_finder.config import Settings, get_all_venezuela_location_tuples, VENEZUELA_LOCATIONS
 from lead_finder.storage import LeadStorage
 from lead_finder.exporter import export_csv, export_json
@@ -26,6 +28,23 @@ class Runner:
         self.settings = settings or Settings()
         self.storage = LeadStorage(self.settings.db_path)
         os.makedirs(self.settings.output_dir, exist_ok=True)
+
+    def _write_progress(self, msg: str):
+        try:
+            sf = os.path.join(self.settings.output_dir, "search_jobs.json")
+            if os.path.exists(sf):
+                with open(sf, 'r', encoding='utf-8') as f:
+                    jobs = json.load(f)
+            else:
+                jobs = {}
+            for jid, job in jobs.items():
+                if job.get("status") == "running":
+                    job["progress"] = msg
+                    with open(sf, 'w', encoding='utf-8') as f:
+                        json.dump(jobs, f, indent=2)
+                    break
+        except Exception:
+            pass
 
     def _run_maps(self, category: str, state: str, city: str,
                   deep: bool, max_deep: int,
@@ -131,15 +150,51 @@ class Runner:
                      include_tiktok: bool = False,
                      parish: Optional[str] = None,
                      sector: Optional[str] = None) -> int:
-        total = self._run_maps(category, state, city, deep, max_deep, parish, sector)
+        where = sector or parish or city
+        self._write_progress(f"Buscando en {where}...")
+        tasks: List[Tuple[str, Callable]] = []
+
+        def maps_task():
+            self._write_progress(f"Google Maps: buscando {category} en {where}")
+            return self._run_maps(category, state, city, deep, max_deep, parish, sector)
+
+        def google_task():
+            self._write_progress(f"Google Search: buscando {category} en {where}")
+            return self._run_google_search(category, state, city, deep, parish, sector)
+
+        def pa_task():
+            self._write_progress(f"Paginas Amarillas: buscando {category} en {where}")
+            return self._run_paginas_amarillas(category, state, city, parish, sector)
+
+        def social_task():
+            self._write_progress(f"Redes Sociales: buscando {category} en {where}")
+            return self._run_social(category, state, city, parish, sector)
+
+        def tiktok_task():
+            self._write_progress(f"TikTok: buscando {category} en {where}")
+            return self._run_tiktok(category, state, city, parish, sector)
+
+        tasks.append(("maps", maps_task))
         if include_google_search:
-            total += self._run_google_search(category, state, city, deep, parish, sector)
+            tasks.append(("google_search", google_task))
         if include_paginas_amarillas:
-            total += self._run_paginas_amarillas(category, state, city, parish, sector)
+            tasks.append(("paginas_amarillas", pa_task))
         if include_social:
-            total += self._run_social(category, state, city, parish, sector)
+            tasks.append(("social", social_task))
         if include_tiktok:
-            total += self._run_tiktok(category, state, city, parish, sector)
+            tasks.append(("tiktok", tiktok_task))
+
+        total = 0
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            future_map = {pool.submit(fn): name for name, fn in tasks}
+            for f in as_completed(future_map):
+                name = future_map[f]
+                try:
+                    result = f.result()
+                    total += result
+                except Exception as e:
+                    print(f"  [!] Error en {name}: {e}")
+        self._write_progress(f"Listo: {total} nuevos leads en {where}")
         return total
 
     def run_all(self, deep: bool = False, max_deep: int = 5,
@@ -195,69 +250,61 @@ class Runner:
                 total += _run_sources_for(state, c)
         elif location:
             for loc in [location]:
-                print(f"  [~] [maps] Buscando: {category} en {loc} ...")
+                print(f"  [~] Buscando: {category} en {loc} ...")
                 start = time.time()
-                try:
+
+                loc_tasks = []
+
+                def loc_maps():
                     leads = MapsSpider(self.settings).search(category, loc, deep=deep, max_deep=max_deep)
-                except Exception as e:
-                    print(f"  [!] Error: {e}")
-                    continue
-                saved = self.storage.save_many(leads)
-                elapsed = time.time() - start
-                total += saved
-                print(f"     -> {len(leads)} encontrados, {saved} nuevos ({elapsed:.0f}s)")
+                    s = self.storage.save_many(leads)
+                    print(f"     [maps] {len(leads)} encontrados, {s} nuevos")
+                    return s
+
+                loc_tasks.append(("maps", loc_maps))
+
                 if include_google_search:
-                    gs = GoogleSearchSpider(self.settings)
-                    print(f"  [~] [google_search] Buscando: {category} en {loc} ...")
-                    start = time.time()
-                    try:
-                        g_leads = gs.search(category, loc, deep=deep)
-                    except Exception as e:
-                        print(f"  [!] Error: {e}")
-                        continue
-                    g_saved = self.storage.save_many(g_leads)
-                    elapsed = time.time() - start
-                    total += g_saved
-                    print(f"     -> {len(g_leads)} encontrados, {g_saved} nuevos ({elapsed:.0f}s)")
+                    def loc_gs():
+                        leads = GoogleSearchSpider(self.settings).search(category, loc, deep=deep)
+                        s = self.storage.save_many(leads)
+                        print(f"     [google_search] {len(leads)} encontrados, {s} nuevos")
+                        return s
+                    loc_tasks.append(("google_search", loc_gs))
+
                 if include_paginas_amarillas:
-                    pa = PaginasAmarillasSpider(self.settings)
-                    print(f"  [~] [paginas_amarillas] Buscando: {category} en {loc} ...")
-                    start = time.time()
-                    try:
-                        pa_leads = pa.search(category, loc)
-                    except Exception as e:
-                        print(f"  [!] Error: {e}")
-                        continue
-                    pa_saved = self.storage.save_many(pa_leads)
-                    elapsed = time.time() - start
-                    total += pa_saved
-                    print(f"     -> {len(pa_leads)} encontrados, {pa_saved} nuevos ({elapsed:.0f}s)")
+                    def loc_pa():
+                        leads = PaginasAmarillasSpider(self.settings).search(category, loc)
+                        s = self.storage.save_many(leads)
+                        print(f"     [paginas_amarillas] {len(leads)} encontrados, {s} nuevos")
+                        return s
+                    loc_tasks.append(("paginas_amarillas", loc_pa))
+
                 if include_social:
-                    gs = GoogleSearchSpider(self.settings)
-                    print(f"  [~] [google_social] Buscando: {category} en {loc} ...")
-                    start = time.time()
-                    try:
-                        s_leads = gs.search_social(category, loc)
-                    except Exception as e:
-                        print(f"  [!] Error: {e}")
-                        continue
-                    s_saved = self.storage.save_many(s_leads)
-                    elapsed = time.time() - start
-                    total += s_saved
-                    print(f"     -> {len(s_leads)} encontrados, {s_saved} nuevos ({elapsed:.0f}s)")
+                    def loc_social():
+                        leads = GoogleSearchSpider(self.settings).search_social(category, loc)
+                        s = self.storage.save_many(leads)
+                        print(f"     [social] {len(leads)} encontrados, {s} nuevos")
+                        return s
+                    loc_tasks.append(("social", loc_social))
+
                 if include_tiktok:
-                    tk = TikTokSpider(self.settings)
-                    print(f"  [~] [tiktok] Buscando: {category} en {loc} ...")
-                    start = time.time()
-                    try:
-                        tk_leads = tk.search(category, loc)
-                    except Exception as e:
-                        print(f"  [!] Error: {e}")
-                        continue
-                    tk_saved = self.storage.save_many(tk_leads)
-                    elapsed = time.time() - start
-                    total += tk_saved
-                    print(f"     -> {len(tk_leads)} encontrados, {tk_saved} nuevos ({elapsed:.0f}s)")
+                    def loc_tiktok():
+                        leads = TikTokSpider(self.settings).search(category, loc)
+                        s = self.storage.save_many(leads)
+                        print(f"     [tiktok] {len(leads)} encontrados, {s} nuevos")
+                        return s
+                    loc_tasks.append(("tiktok", loc_tiktok))
+
+                with ThreadPoolExecutor(max_workers=2) as pool:
+                    fmap = {pool.submit(fn): name for name, fn in loc_tasks}
+                    for f in as_completed(fmap):
+                        try:
+                            total += f.result()
+                        except Exception as e:
+                            print(f"  [!] Error en {fmap[f]}: {e}")
+
+                elapsed = time.time() - start
+                print(f"     -> Total: {total} nuevos ({elapsed:.0f}s)")
         else:
             for s, c in get_all_venezuela_location_tuples():
                 total += _run_sources_for(s, c)

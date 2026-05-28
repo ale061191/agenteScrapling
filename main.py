@@ -66,7 +66,15 @@ def main():
         pa = "--pa" in args
         social = "--social" in args
         tiktok = "--tiktok" in args
+        max_deep = None
+        if "--max-deep" in args:
+            idx = args.index("--max-deep")
+            try:
+                max_deep = int(args[idx + 1])
+            except (ValueError, IndexError):
+                pass
         args = [a for a in args if a not in ("--deep", "--gs", "--pa", "--social", "--tiktok")]
+        args = [a for i, a in enumerate(args) if not (a == "--max-deep" or (i > 0 and args[i-1] == "--max-deep"))]
         cmd = args[0].lower() if args else "help"
         if cmd == "run":
             cat = args[1] if len(args) > 1 else None
@@ -76,6 +84,8 @@ def main():
             parish = parish.replace("_", " ") if parish else None
             sector = sector.replace("_", " ") if sector else None
             kw = dict(deep=deep, include_google_search=gs, include_paginas_amarillas=pa, include_social=social, include_tiktok=tiktok)
+            if max_deep is not None:
+                kw['max_deep'] = max_deep
             if cat and state and city:
                 runner.run_category(cat, state=state, city=city, parish=parish, sector=sector, **kw)
             elif cat and state:
@@ -228,7 +238,15 @@ def main():
         pa = "--pa" in args
         social = "--social" in args
         tiktok = "--tiktok" in args
+        max_deep = None
+        if "--max-deep" in args:
+            idx = args.index("--max-deep")
+            try:
+                max_deep = int(args[idx + 1])
+            except (ValueError, IndexError):
+                pass
         args = [a for a in args if a not in ("--deep", "--gs", "--pa", "--social", "--tiktok")]
+        args = [a for i, a in enumerate(args) if not (a == "--max-deep" or (i > 0 and args[i-1] == "--max-deep"))]
         c = args[0].lower() if args else ""
         if c == "run":
             cat = args[1] if len(args) > 1 else None
@@ -238,6 +256,8 @@ def main():
             parish = parish.replace("_", " ") if parish else None
             sector = sector.replace("_", " ") if sector else None
             kw = dict(deep=deep, include_google_search=gs, include_paginas_amarillas=pa, include_social=social, include_tiktok=tiktok)
+            if max_deep is not None:
+                kw['max_deep'] = max_deep
             if cat and state and city:
                 runner.run_category(cat, state=state, city=city, parish=parish, sector=sector, **kw)
             elif cat and state:
