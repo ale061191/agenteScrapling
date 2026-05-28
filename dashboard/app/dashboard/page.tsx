@@ -387,8 +387,7 @@ export default function DashboardPage() {
 
         <div className="px-6 py-6 space-y-6">
           {/* Section: Dashboard */}
-          {activeSection === 'dashboard' && (
-            <div className="space-y-6 section-enter" key="dashboard">
+          <div className={`space-y-6 section-enter ${activeSection !== 'dashboard' ? 'hidden' : ''}`}>
               <div className="flex flex-wrap gap-3 items-center bg-white rounded-xl shadow-sm border border-gray-100 p-4">
                 <input value={search} onChange={e => setSearch(e.target.value)}
                   placeholder="Buscar leads..."
@@ -439,18 +438,14 @@ export default function DashboardPage() {
                 <VenezuelaMap leads={leads} onSelectLead={setSelectedLead} />
               </div>
             </div>
-          )}
 
           {/* Section: Pipeline */}
-          {activeSection === 'pipeline' && (
-            <div key="pipeline">
-              <PipelineBoard leads={leads} onStatusChange={handleStatusChange} />
-            </div>
-          )}
+          <div className={activeSection !== 'pipeline' ? 'hidden' : ''}>
+            <PipelineBoard leads={leads} onStatusChange={handleStatusChange} />
+          </div>
 
           {/* Section: Todos los Leads */}
-          {activeSection === 'leads' && (
-            <div className="space-y-4 section-enter" key="leads">
+          <div className={`space-y-4 section-enter ${activeSection !== 'leads' ? 'hidden' : ''}`}>
               <div className="flex flex-wrap gap-3 items-center bg-white rounded-xl shadow-sm border border-gray-100 p-4">
                 <input value={search} onChange={e => setSearch(e.target.value)}
                   placeholder="Buscar leads..."
@@ -501,11 +496,9 @@ export default function DashboardPage() {
                 onToggleSelectAll={() => setSelectedIds(prev => prev.length === leads.length ? [] : leads.map(l => l.id!))}
                 onStatusChange={handleStatusChange} onSelectLead={setSelectedLead} onDeleteLead={handleDeleteLead} />
             </div>
-          )}
 
           {/* Section: Buscar Nuevos Leads */}
-          {activeSection === 'search' && (
-            <div className="section-enter" key="search">
+          <div className={`section-enter ${activeSection !== 'search' ? 'hidden' : ''}`}>
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                 <h3 className="font-semibold text-gray-700 mb-1">Nueva Busqueda</h3>
                 <p className="text-xs text-gray-400 mb-5">Configura los parametros y ejecuta una busqueda en Google Maps</p>
@@ -731,11 +724,9 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
-          )}
 
-          {/* Section: Campa\u00f1as de Correo */}
-          {activeSection === 'campaigns' && (
-            <div className="section-enter" key="campaigns">
+          {/* Section: Campañas de Correo */}
+          <div className={`section-enter ${activeSection !== 'campaigns' ? 'hidden' : ''}`}>
               <CampaignForm leadsCount={leads.length} selectedIds={selectedIds}
                 filters={{ category: filterCategory, status: filterStatus, state: filterState, city: filterCity }}
                 onSend={async (opts) => {
@@ -747,7 +738,6 @@ export default function DashboardPage() {
                   return res.json()
                 }} />
             </div>
-          )}
         </div>
       </main>
 
