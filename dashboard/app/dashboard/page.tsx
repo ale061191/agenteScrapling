@@ -166,7 +166,22 @@ export default function DashboardPage() {
   useEffect(() => { fetchData() }, [fetchData])
 
   const handleStatusChange = async (id: number, status: string) => {
-    setLeads(prev => prev.map(l => l.id === id ? { ...l, status } : l))
+    let oldStatus = ''
+    setLeads(prev => {
+      const lead = prev.find(l => l.id === id)
+      if (lead) oldStatus = lead.status
+      return prev.map(l => l.id === id ? { ...l, status } : l)
+    })
+    if (oldStatus && oldStatus !== status) {
+      setStats(prev => prev ? {
+        ...prev,
+        byStatus: {
+          ...prev.byStatus,
+          [oldStatus]: Math.max(0, (prev.byStatus[oldStatus] || 1) - 1),
+          [status]: (prev.byStatus[status] || 0) + 1,
+        },
+      } : prev)
+    }
     try {
       await fetch(`/api/leads/${id}`, {
         method: 'PATCH',
@@ -435,7 +450,7 @@ export default function DashboardPage() {
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mt-6">
                 <h3 className="font-semibold text-gray-700 mb-1">Mapa de Leads Aceptados</h3>
                 <p className="text-xs text-gray-400 mb-4">Distribucion geografica por estado</p>
-                <VenezuelaMap leads={leads} onSelectLead={setSelectedLead} />
+                {activeSection === 'dashboard' && <VenezuelaMap leads={leads} onSelectLead={setSelectedLead} />}
               </div>
             </div>
 
