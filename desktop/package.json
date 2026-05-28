@@ -1,0 +1,88 @@
+{
+  "name": "lead-finder-desktop",
+  "version": "1.0.0",
+  "description": "Lead generation system for Venezuela - Desktop Application",
+  "main": "src/main/main.js",
+  "author": "Lead Finder Team",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dev": "concurrently \"npm run dev:next\" \"npm run dev:electron\"",
+    "dev:next": "cd ../dashboard && npm run dev",
+    "dev:electron": "wait-on http://localhost:3000 && electron .",
+    "build": "npm run build:next && electron-builder --win --mac",
+    "build:next": "cd ../dashboard && npm run build",
+    "build:win": "npm run build:next && electron-builder --win",
+    "build:mac": "npm run build:next && electron-builder --mac",
+    "build:linux": "npm run build:next && electron-builder --linux"
+  },
+  "dependencies": {
+    "electron-log": "^5.1.7",
+    "electron-store": "^8.2.0",
+    "got": "^14.2.1"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "electron": "^31.1.0",
+    "electron-builder": "^24.13.3",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.leadfinder.desktop",
+    "productName": "Lead Finder Venezuela",
+    "copyright": "Copyright © 2024 Lead Finder Team",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "python/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../dashboard/out",
+        "to": "dashboard",
+        "filter": ["**/*"]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "artifactName": "${productName}-${version}-Setup.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "artifactName": "${productName}-${version}.${ext}",
+      "category": "public.app-category.business"
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Office"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "asar": true,
+    "asarUnpack": [
+      "python/**/*",
+      "node_modules/got/**/*"
+    ]
+  }
+}
