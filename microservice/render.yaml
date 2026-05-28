@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: lead-finder-scraper
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scraper_api.py
+    healthCheckPath: /health
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: PORT
+        value: "8000"
+      - key: PYTHON_VERSION
+        value: "3.11"
