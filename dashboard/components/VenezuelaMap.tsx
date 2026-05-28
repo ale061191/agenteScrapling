@@ -67,7 +67,7 @@ function MapMarkers({ leads, onSelectLead, visible }: { leads: Lead[], onSelectL
     return Object.values(groups).filter(g => g.accepted > 0)
   }, [leads])
 
-  if (!visible) return null
+  // removed early return for !visible to prevent Leaflet _removePath errors when hiding map
 
   return (
     <>
@@ -119,7 +119,18 @@ function MapMarkers({ leads, onSelectLead, visible }: { leads: Lead[], onSelectL
 }
 
 export default function VenezuelaMap({ leads, onSelectLead, active }: Props) {
+  const [hasMounted, setHasMounted] = useState(false)
   const totalAccepted = useMemo(() => leads.filter(l => l.status === 'aceptado').length, [leads])
+
+  useEffect(() => {
+    if (active) setHasMounted(true)
+  }, [active])
+
+  if (!hasMounted) return (
+    <div className="relative rounded-xl border border-gray-200 shadow-sm bg-gray-50 flex items-center justify-center text-gray-400" style={{ height: '400px' }}>
+      Cargando mapa...
+    </div>
+  )
 
   return (
     <div className="relative rounded-xl overflow-hidden border border-gray-200 shadow-sm"
