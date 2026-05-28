@@ -285,12 +285,14 @@ export default function DashboardPage() {
   const cancelSearch = async () => {
     if (!searchJobId) return
     try {
-      await fetch('/api/search', {
+      await fetch('/api/search/cancel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'cancel', jobId: searchJobId }),
+        body: JSON.stringify({ jobId: searchJobId }),
       })
-    } catch {}
+    } catch (e) {
+      console.error('Cancel fetch error:', e)
+    }
     if (pollRef.current) clearInterval(pollRef.current)
     setSearching(false)
     setSearchJobId(null)

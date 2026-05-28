@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { spawn, ChildProcess, execSync } from 'child_process'
+import { spawn, execSync } from 'child_process'
 import path from 'path'
 import fs from 'fs'
 
@@ -44,39 +44,22 @@ function writeJobs(jobs: Record<string, Job>) {
   fs.writeFileSync(JOBS_FILE, JSON.stringify(jobs, null, 2), 'utf-8')
 }
 
-function killProcess(pid: number) {
-  try {
-    execSync(`taskkill /F /T /PID ${pid}`, { stdio: 'ignore' })
-  } catch {}
+function deleteJob(jobId: string) {
+  const jobs = readJobs()
+  delete jobs[jobId]
+  writeJobs(jobs)
+}
+
+function killByPid(pid: number) {
+  try { execSync(`taskkill /F /T /PID ${pid}`, { stdio: 'ignore', timeout: 5000 }) } catch {}
 }
 
 export async function POST(request: NextRequest) {
   if (IS_VERCEL) {
-    return NextResponse.json({ error: 'La busqueda de leads solo funciona en modo local (tu PC). El dashboard en la nube solo muestra y gestiona leads existentes.' }, { status: 400 })
+    return NextResponse.json({ error: 'Solo funciona en modo local' }, { status: 400 })
   }
 
   const body = await request.json()
-
-  if (body.action === 'cancel') {
-    const { jobId } = body
-    if (!jobId) {
-      return NextResponse.json({ error: 'jobId is required' }, { status: 400 })
-    }
-    const jobs = readJobs()
-    const job = jobs[jobId]
-    if (job) {
-      if (job.status === 'running') {
-        job.status = 'cancelled'
-        job.finished = new Date().toISOString()
-      }
-      if (job.pid) {
-        killProcess(job.pid)
-      }
-      writeJobs(jobs)
-    }
-    return NextResponse.json({ success: true })
-  }
-
   const { category, state, city, parish, sector, deep, googleSearch, paginasAmarillas, social, tiktok, instagram, maxDeep } = body
   if (!category || !state || !city) {
     return NextResponse.json({ error: 'category, state, and city are required' }, { status: 400 })
@@ -100,7 +83,6 @@ export async function POST(request: NextRequest) {
     ...(maxDeep && maxDeep > 0 ? ['--max-deep', String(maxDeep)] : []),
   ]
   const args = ['run', ...flags, category, state, cityArg]
-
   if (parish) args.push(parish.replace(/ /g, '_'))
   if (sector) args.push(sector.replace(/ /g, '_'))
 
@@ -110,23 +92,24 @@ export async function POST(request: NextRequest) {
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 
-  job.pid = proc.pid
-  writeJobs(readJobs())
+  const j = readJobs()
+  j[jobId].pid = proc.pid
+  writeJobs(j)
 
   let output = ''
   proc.stdout.on('data', (data) => { output += data.toString() })
   proc.stderr.on('data', (data) => { output += data.toString() })
 
   proc.on('close', (code) => {
-    const j = readJobs()
-    if (j[jobId]?.status === 'cancelled') {
-      writeJobs(j)
+    const jobs2 = readJobs()
+    if (jobs2[jobId]?.status === 'cancelled') {
+      writeJobs(jobs2)
       return
     }
     const match = output.match(/(\d+)\s*encontrados/)
     const leadsFound = match ? parseInt(match[1]) : undefined
-    j[jobId] = { ...j[jobId], status: code === 0 ? 'done' : 'error', finished: new Date().toISOString(), output: output.slice(-2000), leadsFound }
-    writeJobs(j)
+    jobs2[jobId] = { ...jobs2[jobId], status: code === 0 ? 'done' : 'error', finished: new Date().toISOString(), output: output.slice(-2000), leadsFound }
+    writeJobs(jobs2)
   })
 
   return NextResponse.json({ jobId, status: 'running' })
@@ -136,7 +119,6 @@ export async function GET(request: NextRequest) {
   if (IS_VERCEL) {
     return NextResponse.json({ jobs: [] })
   }
-
   const { searchParams } = new URL(request.url)
   const jobId = searchParams.get('jobId')
   const jobs = readJobs()
@@ -151,15 +133,15 @@ export async function DELETE(request: NextRequest) {
   if (IS_VERCEL) {
     return NextResponse.json({ success: true })
   }
-
   const { searchParams } = new URL(request.url)
   const jobId = searchParams.get('jobId')
-  const jobs = readJobs()
   if (jobId) {
-    delete jobs[jobId]
-    writeJobs(jobs)
+    const jobs = readJobs()
+    const job = jobs[jobId]
+    if (job && job.pid) killByPid(job.pid)
+    deleteJob(jobId)
     return NextResponse.json({ success: true })
   }
   writeJobs({})
-  return NextResponse.json({ success: true, message: 'History cleared' })
+  return NextResponse.json({ success: true })
 }
