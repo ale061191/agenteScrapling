@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { spawn } from 'child_process'
+import { spawn, ChildProcess } from 'child_process'
 import path from 'path'
 import fs from 'fs'
 
@@ -10,6 +10,8 @@ const DATA_DIR = path.join(process.cwd(), '..', 'leads_data')
 const JOBS_FILE = path.join(DATA_DIR, 'search_jobs.json')
 const PYTHON_EXE = 'C:\\Users\\Voltaje Plus\\AppData\\Local\\Python\\bin\\python.exe'
 const MAIN_PY = path.join(process.cwd(), '..', 'main.py')
+
+const runningProcesses = new Map<string, ChildProcess>()
 
 interface Job {
   jobId: string
@@ -24,7 +26,7 @@ interface Job {
   social: boolean
   tiktok: boolean
   maxDeep?: number
-  status: 'running' | 'done' | 'error'
+  status: 'running' | 'done' | 'error' | 'cancelled'
   started: string
   finished?: string
   leadsFound?: number
@@ -80,12 +82,19 @@ export async function POST(request: NextRequest) {
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 
+  runningProcesses.set(jobId, proc)
+
   let output = ''
   proc.stdout.on('data', (data) => { output += data.toString() })
   proc.stderr.on('data', (data) => { output += data.toString() })
 
   proc.on('close', (code) => {
+    runningProcesses.delete(jobId)
     const j = readJobs()
+    if (j[jobId]?.status === 'cancelled') {
+      writeJobs(j)
+      return
+    }
     const match = output.match(/(\d+)\s*encontrados/)
     const leadsFound = match ? parseInt(match[1]) : undefined
     j[jobId] = { ...j[jobId], status: code === 0 ? 'done' : 'error', finished: new Date().toISOString(), output: output.slice(-2000), leadsFound }
@@ -108,6 +117,37 @@ export async function GET(request: NextRequest) {
   }
   const recent = Object.values(jobs).sort((a, b) => b.started.localeCompare(a.started)).slice(0, 20)
   return NextResponse.json({ jobs: recent })
+}
+
+export async function PATCH(request: NextRequest) {
+  if (IS_VERCEL) {
+    return NextResponse.json({ success: true })
+  }
+
+  const body = await request.json()
+  const { jobId } = body
+  if (!jobId) {
+    return NextResponse.json({ error: 'jobId is required' }, { status: 400 })
+  }
+
+  const proc = runningProcesses.get(jobId)
+  if (proc) {
+    try {
+      proc.kill('SIGTERM')
+    } catch {}
+    setTimeout(() => {
+      try { proc.kill('SIGKILL') } catch {}
+    }, 3000)
+    runningProcesses.delete(jobId)
+  }
+
+  const jobs = readJobs()
+  if (jobs[jobId] && jobs[jobId].status === 'running') {
+    jobs[jobId] = { ...jobs[jobId], status: 'cancelled', finished: new Date().toISOString() }
+    writeJobs(jobs)
+  }
+
+  return NextResponse.json({ success: true })
 }
 
 export async function DELETE(request: NextRequest) {

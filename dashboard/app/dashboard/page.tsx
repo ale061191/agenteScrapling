@@ -13,6 +13,7 @@ import TrendChart from '@/components/TrendChart'
 import EmailStatsChart from '@/components/EmailStatsChart'
 import dynamic from 'next/dynamic'
 import type { Lead } from '@/lib/data'
+import { getParishes, getSectors } from '@/lib/parishes'
 
 const VenezuelaMap = dynamic(() => import('@/components/VenezuelaMap'), { ssr: false })
 
@@ -109,6 +110,14 @@ export default function DashboardPage() {
   const sCitiesForState = useMemo(() => {
     return sState ? VENEZUELA_LOCATIONS[sState] || [] : []
   }, [sState])
+
+  const sParishes = useMemo(() => {
+    return sState && sCity ? getParishes(sState, sCity) : []
+  }, [sState, sCity])
+
+  const sSectors = useMemo(() => {
+    return sState && sCity ? getSectors(sState, sCity) : []
+  }, [sState, sCity])
 
   const acceptanceTrend = useMemo(() => {
     const counts: Record<string, number> = {}
@@ -258,6 +267,11 @@ export default function DashboardPage() {
           setSearching(false)
           setSearchJobId(null)
           if (pollRef.current) clearInterval(pollRef.current)
+        } else if (data.job?.status === 'cancelled') {
+          setSearchResult('Busqueda cancelada')
+          setSearching(false)
+          setSearchJobId(null)
+          if (pollRef.current) clearInterval(pollRef.current)
         } else if (data.job?.progress) {
           setSearchResult(`Buscando... ${data.job.progress}`)
         }
@@ -265,6 +279,22 @@ export default function DashboardPage() {
     }, 3000)
     return () => { if (pollRef.current) clearInterval(pollRef.current) }
   }, [searchJobId, searching, fetchData])
+
+  const cancelSearch = async () => {
+    if (!searchJobId) return
+    try {
+      await fetch('/api/search', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId: searchJobId }),
+      })
+    } catch {}
+    setSearchResult('Cancelando...')
+    if (pollRef.current) clearInterval(pollRef.current)
+    setSearching(false)
+    setSearchJobId(null)
+    setSearchResult('Busqueda cancelada')
+  }
 
   const categories = stats ? Object.keys(stats.byCategory) : []
 
@@ -502,15 +532,19 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1.5">Parroquia <span className="text-gray-300 font-normal">(opcional)</span></label>
-                    <input value={sParish} onChange={e => setSParish(e.target.value)}
-                      placeholder="Ej: El Cafetal, Santa Rosalia..."
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition-all" />
+                    <select value={sParish} onChange={e => setSParish(e.target.value)}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition-all bg-white">
+                      <option value="">Ninguna</option>
+                      {sParishes.map(p => <option key={p} value={p}>{p.replace('Parroquia ', '')}</option>)}
+                    </select>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1.5">Sector <span className="text-gray-300 font-normal">(opcional)</span></label>
-                    <input value={sSector} onChange={e => setSSector(e.target.value)}
-                      placeholder="Ej: Las Mercedes, El Hatillo..."
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition-all" />
+                    <select value={sSector} onChange={e => setSSector(e.target.value)}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition-all bg-white">
+                      <option value="">Ninguno</option>
+                      {sSectors.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
                     <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-gray-50 transition-colors">
@@ -576,24 +610,33 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <button onClick={triggerSearch} disabled={searching || !sCategory || !sState || !sCity}
-                  className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
-                    searching || !sCategory || !sState || !sCity
-                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                      : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm hover:shadow'
-                  }`}>
-                  {searching ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Buscando...
-                    </>
-                  ) : (
-                    <>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                      Buscar Nuevos Leads
-                    </>
+                <div className="flex gap-2">
+                  <button onClick={triggerSearch} disabled={searching || !sCategory || !sState || !sCity}
+                    className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
+                      searching || !sCategory || !sState || !sCity
+                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm hover:shadow'
+                    }`}>
+                    {searching ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Buscando...
+                      </>
+                    ) : (
+                      <>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        Buscar Nuevos Leads
+                      </>
+                    )}
+                  </button>
+                  {searching && (
+                    <button onClick={cancelSearch}
+                      className="px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 hover:border-red-300 shadow-sm">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      Cancelar
+                    </button>
                   )}
-                </button>
+                </div>
 
                 {searchResult && (
                   <div className={`mt-4 p-3 rounded-lg text-sm section-enter ${
