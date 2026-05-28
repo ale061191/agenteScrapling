@@ -167,12 +167,13 @@ export default function DashboardPage() {
 
   const handleStatusChange = async (id: number, status: string) => {
     setLeads(prev => prev.map(l => l.id === id ? { ...l, status } : l))
-    await fetch(`/api/leads/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    })
-    fetchData()
+    try {
+      await fetch(`/api/leads/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+    } catch {}
   }
 
   const handleSaveLead = async (id: number, data: { status?: string; notes?: string }) => {
