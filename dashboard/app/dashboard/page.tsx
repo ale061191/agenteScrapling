@@ -450,7 +450,7 @@ export default function DashboardPage() {
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mt-6">
                 <h3 className="font-semibold text-gray-700 mb-1">Mapa de Leads Aceptados</h3>
                 <p className="text-xs text-gray-400 mb-4">Distribucion geografica por estado</p>
-                {activeSection === 'dashboard' && <VenezuelaMap leads={leads} onSelectLead={setSelectedLead} />}
+                <VenezuelaMap leads={leads} onSelectLead={setSelectedLead} active={activeSection === 'dashboard'} />
               </div>
             </div>
 
