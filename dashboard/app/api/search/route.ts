@@ -43,6 +43,32 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // Detect Python executable dynamically (same logic as INICIAR.bat)
+  const { execSync } = require('child_process')
+  let PYTHON_EXE = 'python'
+  try {
+    execSync('python --version', { stdio: 'ignore' })
+  } catch {
+    const paths = [
+      '%LOCALAPPDATA%\\Python\\bin\\python.exe',
+      '%USERPROFILE%\\AppData\\Local\\Programs\\Python\\Python313\\python.exe',
+      '%USERPROFILE%\\AppData\\Local\\Programs\\Python\\Python312\\python.exe',
+      '%USERPROFILE%\\AppData\\Local\\Programs\\Python\\Python311\\python.exe',
+      'C:\\Python313\\python.exe',
+      'C:\\Python312\\python.exe',
+      'C:\\Python311\\python.exe',
+    ]
+    const { existsSync } = require('fs')
+    for (const p of paths) {
+      const expanded = p.replace(/%LOCALAPPDATA%/g, process.env.LOCALAPPDATA || '').replace(/%USERPROFILE%/g, process.env.USERPROFILE || '')
+      if (existsSync(expanded)) {
+        PYTHON_EXE = expanded
+        break
+      }
+    }
+  }
+  console.log(`[SEARCH] Using Python: ${PYTHON_EXE}`)
+
   // Local development: spawn Python synchronously and wait for result
   const MAIN_PY = path.join(process.cwd(), '..', 'main.py')
 
