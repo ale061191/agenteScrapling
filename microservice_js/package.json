@@ -1,0 +1,21 @@
+{
+  "name": "lead-finder-microservice",
+  "version": "1.0.0",
+  "description": "Lead Finder Microservice - Node.js + Playwright scraping API",
+  "main": "scraper_api.js",
+  "scripts": {
+    "start": "node scraper_api.js",
+    "dev": "node scraper_api.js"
+  },
+  "keywords": ["scraping", "playwright", "lead-finder"],
+  "author": "Nova Tech AI",
+  "license": "ISC",
+  "dependencies": {
+    "@playwright/test": "^1.40.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "playwright": "^1.40.0",
+    "@supabase/supabase-js": "^2.39.0"
+  }
+}

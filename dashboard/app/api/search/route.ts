@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { spawn } from 'child_process'
+import path from 'path'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-const SCRAPER_API_URL = process.env.SCRAPER_API_URL || ''
-const SCRAPER_API_KEY = process.env.SCRAPER_API_KEY || ''
+const PYTHON_EXE = 'C:\\Users\\Voltaje Plus\\AppData\\Local\\Python\\bin\\python.exe'
 
 export async function POST(request: NextRequest) {
   const body = await request.json()
@@ -14,14 +15,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'category, state, and city are required' }, { status: 400 })
   }
 
-  // If we have a scraper microservice URL, use it
-  if (SCRAPER_API_URL) {
+  const isDev = process.env.NODE_ENV === 'development'
+
+  // Only run locally in development mode, otherwise require microservice
+  if (!isDev && !process.env.SCRAPER_API_URL) {
+    return NextResponse.json({
+      error: 'Busqueda no disponible en la nube',
+      hint: 'Despliega el microservicio en Cyclic.sh y configura SCRAPER_API_URL en tu .env'
+    }, { status: 503 })
+  }
+
+  // Use microservice if available
+  if (process.env.SCRAPER_API_URL) {
     try {
-      const res = await fetch(`${SCRAPER_API_URL}/search`, {
+      const res = await fetch(`${process.env.SCRAPER_API_URL}/search`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(SCRAPER_API_KEY ? { 'Authorization': `Bearer ${SCRAPER_API_KEY}` } : {}),
+          ...(process.env.SCRAPER_API_KEY ? { 'Authorization': `Bearer ${process.env.SCRAPER_API_KEY}` } : {}),
         },
         body: JSON.stringify({ category, state, city, parish, sector, deep, googleSearch, paginasAmarillas, social, tiktok, instagram, maxDeep }),
       })
@@ -32,25 +43,9 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Fallback for local development - check if we're in dev mode
-  const isDev = process.env.NODE_ENV === 'development'
-  
-  if (!isDev && !SCRAPER_API_URL) {
-    return NextResponse.json({ 
-      error: 'Busqueda no disponible en la nube', 
-      hint: 'La busqueda de nuevos leads requiere configurar SCRAPER_API_URL. Despliega el microservicio en Render.com y configura la variable de entorno.',
-      docs: 'https://render.com/docs/deployments'
-    }, { status: 503 })
-  }
-
-  // Local development fallback - spawn Python process
-  const { spawn } = await import('child_process')
-  const path = await import('path')
-  
-  const PYTHON_EXE = 'C:\\Users\\Voltaje Plus\\AppData\\Local\\Python\\bin\\python.exe'
+  // Local development: spawn Python synchronously and wait for result
   const MAIN_PY = path.join(process.cwd(), '..', 'main.py')
 
-  const cityArg = city.replace(/ /g, '_')
   const flags = [
     ...(deep ? ['--deep'] : []),
     ...(googleSearch ? ['--gs'] : []),
@@ -60,27 +55,107 @@ export async function POST(request: NextRequest) {
     ...(instagram ? ['--instagram'] : []),
     ...(maxDeep && maxDeep > 0 ? ['--max-deep', String(maxDeep)] : []),
   ]
-  const args = ['run', ...flags, category, state, cityArg]
-  if (parish) args.push(parish.replace(/ /g, '_'))
-  if (sector) args.push(sector.replace(/ /g, '_'))
+
+  // Build args: run <category> <state> <city> [parish] [sector]
+  const cityArg = city.replace(/ /g, '_')
+  const stateArg = state.replace(/ /g, '_')
+  const parishArg = parish ? parish.replace(/ /g, '_') : null
+  const sectorArg = sector ? sector.replace(/ /g, '_') : null
+
+  const args = ['run', ...flags, category, stateArg, cityArg]
+  if (parishArg) args.push(parishArg)
+  if (sectorArg) args.push(sectorArg)
 
   const jobId = `search_${Date.now()}`
 
-  const proc = spawn(PYTHON_EXE, [MAIN_PY, ...args], {
-    cwd: path.join(process.cwd(), '..'),
-    windowsHide: true,
-    stdio: ['ignore', 'pipe', 'pipe'],
-  })
+  console.log(`[SEARCH] Running: ${PYTHON_EXE} ${MAIN_PY} ${args.join(' ')}`)
 
-  let output = ''
-  proc.stdout.on('data', (data) => { output += data.toString() })
-  proc.stderr.on('data', (data) => { output += data.toString() })
+  let output = '', stderr = ''
+  let leadsFound = 0
+  let errorMsg = null
 
-  proc.on('close', (code) => {
-    const match = output.match(/(\d+)\s*encontrados/)
-    const leadsFound = match ? parseInt(match[1]) : 0
-    console.log(`Local search done: ${leadsFound} leads`)
-  })
+  try {
+    const proc = spawn(PYTHON_EXE, [MAIN_PY, ...args], {
+      cwd: path.join(process.cwd(), '..'),
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
 
-  return NextResponse.json({ jobId, status: 'running', message: 'Buscando localmente...' })
+    // Wait for process to complete with timeout
+    const exitCode = await new Promise((resolve) => {
+      proc.stdout.on('data', (data) => { output += data.toString() })
+      proc.stderr.on('data', (data) => { stderr += data.toString() })
+      proc.on('error', (err) => {
+        console.error('[SEARCH] Process error:', err)
+        errorMsg = err.message
+      })
+      proc.on('close', (code) => {
+        console.log(`[SEARCH] Python exited with code ${code}`)
+        console.log(`[SEARCH] Output: ${output.substring(0, 500)}`)
+        resolve(code)
+      })
+
+      // Timeout after 5 minutes
+      setTimeout(() => {
+        console.log('[SEARCH] Timeout - killing process')
+        proc.kill()
+        resolve(-1)
+      }, 300000)
+    })
+
+    if (errorMsg) {
+      return NextResponse.json({ error: `Error ejecutando Python: ${errorMsg}` }, { status: 500 })
+    }
+
+    // Parse output for results
+    // Look for patterns like "30 encontrados" or "Found X" or "X leads"
+    const patterns = [
+      /(\d+)\s*encontrados?/i,
+      /(\d+)\s*found/i,
+      /(\d+)\s*leads?/i,
+      /total:\s*(\d+)/i,
+      /nuevos:\s*(\d+)/i,
+    ]
+
+    for (const pattern of patterns) {
+      const match = output.match(pattern)
+      if (match) {
+        leadsFound = parseInt(match[1])
+        break
+      }
+    }
+
+    if (exitCode !== 0 && !leadsFound) {
+      console.error(`[SEARCH] Non-zero exit: ${exitCode}, stderr: ${stderr.substring(0, 200)}`)
+      if (stderr.includes('ModuleNotFoundError') || stderr.includes('ImportError')) {
+        return NextResponse.json({
+          error: 'Falta instalar librerias Python',
+          hint: 'Ejecuta en terminal: pip install scrapling flask supabase playwright && python -m playwright install chromium --with-deps',
+          detail: stderr.substring(0, 300)
+        }, { status: 500 })
+      }
+      if (stderr.includes('playwright') || stderr.includes('browser') || stderr.includes('chromium') || stderr.includes('Executable')) {
+        return NextResponse.json({
+          error: 'Navegador de Playwright no instalado',
+          hint: 'Ejecuta en terminal: python -m playwright install chromium --with-deps',
+          detail: stderr.substring(0, 300)
+        }, { status: 500 })
+      }
+    }
+
+    console.log(`[SEARCH] Done: ${leadsFound} leads found`)
+
+    return NextResponse.json({
+      jobId,
+      status: 'done',
+      leadsFound,
+      message: leadsFound > 0
+        ? `${leadsFound} leads encontrados en ${city}, ${state}`
+        : `Busqueda completada sin resultados en ${city}, ${state}`
+    })
+
+  } catch (err) {
+    console.error('[SEARCH] Fatal error:', err)
+    return NextResponse.json({ error: `Error: ${err.message}` }, { status: 500 })
+  }
 }
